@@ -91,7 +91,7 @@ export default function Dashboard() {
 
     const { data, error } = await supabase
       .from("events")
-      .select("id, event_name, event_type, start_date, cover_image_url, status, view_count, slug")
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -314,7 +314,7 @@ export default function Dashboard() {
                             View
                           </Button>
                         </Link>
-                        <Link to={`/edit-event/${event.id}`}>
+                        <Link to={`/edit-event/${event.id}`} state={{ event }}>
                           <Button variant="ghost" size="sm">
                             <Edit className="h-4 w-4" />
                           </Button>

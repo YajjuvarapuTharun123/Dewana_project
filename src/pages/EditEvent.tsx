@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
@@ -43,6 +43,7 @@ export default function EditEvent() {
     const { id } = useParams<{ id: string }>();
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const { toast } = useToast();
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,40 +83,72 @@ export default function EditEvent() {
         status: "draft",
     });
 
-    // ... (keep useEffects)
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (!authLoading && !user) {
+            navigate("/auth");
+        }
+    }, [user, authLoading, navigate]);
+
+    // Fetch event data or use location state
+    useEffect(() => {
+        if (user && id) {
+            // Check for passed state FIRST
+            if (location.state?.event) {
+                const data = location.state.event;
+                // Parse date and time
+                const startDateTime = new Date(data.start_date);
+                const dateStr = startDateTime.toISOString().split("T")[0];
+                const timeStr = startDateTime.toTimeString().slice(0, 5);
+
+                setFormData({
+                    eventType: data.event_type || "",
+                    eventName: data.event_name || "",
+                    hostNames: data.host_names || "",
+                    description: data.description || "",
+                    startDate: dateStr,
+                    startTime: timeStr,
+                    venueName: data.venue_name || "",
+                    venueAddress: data.venue_address || "",
+                    parkingNotes: data.parking_notes || "",
+                    dressCode: data.dress_code || "",
+                    status: data.status || "draft",
+                });
+                setLoading(false);
+            } else {
+                fetchEvent();
+            }
+        }
+    }, [user, id, location.state]);
 
     const fetchEvent = async () => {
-        if (!id) {
-            toast({
-                title: "Error",
-                description: "Invalid event ID",
-                variant: "destructive",
-            });
-            navigate("/dashboard");
-            return;
-        }
+        if (!id || !user) return;
+
+        setLoading(true);
+
+        // Refresh session to ensure token is valid
+        const { error: sessionError } = await supabase.auth.refreshSession();
+        if (sessionError) console.log("Session refresh warning:", sessionError);
 
         try {
             const { data, error } = await supabase
                 .from("events")
                 .select("*")
                 .eq("id", id)
-                .eq("user_id", user?.id)
                 .single();
 
             if (error) throw error;
 
             if (!data) {
                 toast({
-                    title: "Error",
-                    description: "Event not found or you don't have permission to edit it.",
+                    title: "Event not found",
+                    description: "Could not find the event details.",
                     variant: "destructive",
                 });
-                navigate("/dashboard");
                 return;
             }
 
-            // Parse date and time from start_date
+            // Parse date and time
             const startDateTime = new Date(data.start_date);
             const dateStr = startDateTime.toISOString().split("T")[0];
             const timeStr = startDateTime.toTimeString().slice(0, 5);
@@ -136,11 +169,10 @@ export default function EditEvent() {
         } catch (error: any) {
             console.error("Error fetching event:", error);
             toast({
-                title: "Error",
-                description: "Failed to load event details.",
+                title: "Loading Error",
+                description: "Failed to load event. Please check your connection.",
                 variant: "destructive",
             });
-            navigate("/dashboard");
         } finally {
             setLoading(false);
         }
@@ -222,17 +254,30 @@ export default function EditEvent() {
         }
     };
 
-    if (authLoading || loading) {
+    // Loading State
+    if (authLoading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="animate-pulse text-muted-foreground">Loading...</div>
+                <div className="animate-pulse text-muted-foreground">Authenticating...</div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background flex flex-col">
+        <div className="min-h-screen bg-background flex flex-col relative">
             <Navbar />
+
+            {loading && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <p className="text-muted-foreground">Loading Event...</p>
+                        <Button variant="outline" onClick={fetchEvent}>
+                            Retry
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             <main className="flex-1 pt-24 pb-12">
                 <div className="container mx-auto px-4 max-w-3xl">

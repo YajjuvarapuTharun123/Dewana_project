@@ -67,9 +67,9 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
 
     try {
@@ -99,11 +99,19 @@ export default function Auth() {
       } else {
         const { error } = await signIn(formData.email, formData.password);
         if (error) {
-          toast({
-            title: "Sign in failed",
-            description: "Invalid email or password. Please try again.",
-            variant: "destructive",
-          });
+          if (error.message.includes("Email not confirmed")) {
+            toast({
+              title: "Email not verified",
+              description: "Please verify your email address before signing in.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Sign in failed",
+              description: error.message || "Invalid email or password. Please try again.",
+              variant: "destructive",
+            });
+          }
         } else {
           navigate("/dashboard");
         }
