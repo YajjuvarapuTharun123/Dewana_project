@@ -14,29 +14,35 @@ import CheckIn from "./pages/CheckIn";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
+import { PWAProvider } from "@/contexts/PWAContext";
+import { PWAInstallBanner } from "@/components/PWAInstallBanner";
+
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/create-event" element={<CreateEvent />} />
-            <Route path="/event/:slug" element={<EventView />} />
-            <Route path="/edit-event/:id" element={<EditEvent />} />
-            <Route path="/checkin/:eventId" element={<CheckIn />} />
-            <Route path="/profile" element={<Profile />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <PWAProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <PWAInstallBanner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/create-event" element={<CreateEvent />} />
+              <Route path="/event/:slug" element={<EventView />} />
+              <Route path="/edit-event/:id" element={<EditEvent />} />
+              <Route path="/checkin/:eventId" element={<CheckIn />} />
+              <Route path="/profile" element={<Profile />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </PWAProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

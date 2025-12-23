@@ -2,7 +2,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
-import { Menu, X, LogOut, LayoutDashboard, User } from "lucide-react";
+import { usePWA } from "@/contexts/PWAContext";
+import { Menu, X, LogOut, LayoutDashboard, User, Download } from "lucide-react";
 import { useState } from "react";
 import {
   DropdownMenu,
@@ -16,6 +17,17 @@ export function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { deferredPrompt, showInstallPrompt, isIOS } = usePWA();
+
+  const handleInstallClick = async () => {
+    if (isIOS) {
+      // Logic to show iOS instructions (can be a toast or dialog, 
+      // but for now we will rely on the Banner showing it, or just a toast)
+      // The PWAInstallBanner handles the UI for instructions best.
+      // Here we might want to just scroll to bottom or show a helper.
+    }
+    await showInstallPrompt();
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,6 +49,13 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
+            {(deferredPrompt || isIOS) && (
+              <Button variant="outline" size="sm" className="gap-2 hidden md:flex" onClick={handleInstallClick}>
+                <Download className="h-4 w-4" />
+                Install App
+              </Button>
+            )}
+
             {user ? (
               <>
                 <Link to="/dashboard">
@@ -64,6 +83,10 @@ export function Navbar() {
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <User className="mr-2 h-4 w-4" />
                       My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt && !isIOS}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Install App
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
                       <LogOut className="mr-2 h-4 w-4" />
@@ -96,6 +119,14 @@ export function Navbar() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
+            {(deferredPrompt || isIOS) && (
+              <div className="px-2 pb-2">
+                <Button variant="outline" className="w-full gap-2" onClick={handleInstallClick}>
+                  <Download className="h-4 w-4" />
+                  Install App
+                </Button>
+              </div>
+            )}
             {user ? (
               <div className="space-y-2">
                 <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
