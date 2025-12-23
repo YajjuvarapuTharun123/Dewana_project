@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode";
+import { generateQRCodeWithLogo } from "@/lib/qr-code-utils";
 import {
   Plus,
   Calendar,
@@ -132,13 +133,11 @@ export default function Dashboard() {
     setSelectedEvent(event);
     const eventUrl = `${window.location.origin}/event/${event.slug}`;
     try {
-      const qrDataUrl = await QRCode.toDataURL(eventUrl, {
-        width: 400,
+      // Generate QR code with Dewana logo
+      const qrDataUrl = await generateQRCodeWithLogo(eventUrl, {
+        size: 400,
+        logoSize: 80,
         margin: 2,
-        color: {
-          dark: "#000000",
-          light: "#FFFFFF",
-        },
       });
       setQrCodeDataUrl(qrDataUrl);
       setQrDialogOpen(true);

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode";
+import { generateQRCodeWithLogo } from "@/lib/qr-code-utils";
 import {
   Calendar,
   MapPin,
@@ -158,11 +159,12 @@ export default function EventView() {
         description: "Thank you for your response. We look forward to seeing you!",
       });
 
-      // Generate guest QR code
+      // Generate guest QR code with Dewana logo
       if (data && rsvpForm.status === "yes") {
         const qrData = JSON.stringify({ rsvpId: data.id });
-        const qrDataUrl = await QRCode.toDataURL(qrData, {
-          width: 400,
+        const qrDataUrl = await generateQRCodeWithLogo(qrData, {
+          size: 400,
+          logoSize: 80,
           margin: 2,
         });
         setGuestQRCode(qrDataUrl);
