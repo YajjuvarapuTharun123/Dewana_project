@@ -135,6 +135,12 @@ export function Navbar() {
                     Dashboard
                   </Button>
                 </Link>
+                <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start gap-2">
+                    <User className="h-4 w-4" />
+                    My Profile
+                  </Button>
+                </Link>
                 <Button
                   variant="ghost"
                   className="w-full justify-start gap-2 text-destructive"
