@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
+      includeAssets: ['favicon.ico', 'dewana-logo.png'],
       manifest: {
         name: 'Dewana Events',
         short_name: 'Dewana',
@@ -30,12 +30,12 @@ export default defineConfig(({ mode }) => ({
         orientation: 'portrait',
         icons: [
           {
-            src: 'icon-192.png',
+            src: 'dewana-logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'icon-512.png',
+            src: 'dewana-logo.png',
             sizes: '512x512',
             type: 'image/png'
           }
