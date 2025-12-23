@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "qrcode";
 import { generateQRCodeWithLogo } from "@/lib/qr-code-utils";
+import { getYouTubeEmbedUrl } from "@/lib/video-utils";
 import {
   Calendar,
   MapPin,
@@ -48,6 +49,8 @@ interface Event {
   status: string;
   slug: string;
   view_count?: number;
+  youtube_link?: string | null;
+  custom_social_links?: any | null;
 }
 
 interface RSVPForm {
@@ -325,6 +328,67 @@ export default function EventView() {
               </div>
             </div>
           </div>
+
+
+          {/* Video Gallery */}
+          {(event.youtube_link || (event.custom_social_links as any)?.instagram_url) && (
+            <div className="invitation-card mb-8 p-6 md:p-8">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="bg-primary/10 p-2 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="m22 8-6 4 6 4V8Z" /><rect width="14" height="12" x="2" y="6" rx="2" ry="2" /></svg>
+                </div>
+                <h2 className="text-2xl font-display font-bold">Event Gallery</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* YouTube Embed */}
+                {event.youtube_link && getYouTubeEmbedUrl(event.youtube_link) && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                      Watch Video
+                    </h3>
+                    <div className="aspect-video rounded-xl overflow-hidden bg-black shadow-md">
+                      <iframe
+                        src={getYouTubeEmbedUrl(event.youtube_link)!}
+                        title="YouTube video player"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="w-full h-full border-0"
+                      ></iframe>
+                    </div>
+                  </div>
+                )}
+
+                {/* Instagram Link/Embed */}
+                {(event.custom_social_links as any)?.instagram_url && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+                      On Instagram
+                    </h3>
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 h-full min-h-[200px]">
+                      <div className="bg-white p-3 rounded-full shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+                      </div>
+                      <div>
+                        <p className="font-medium text-lg">Check out our moments</p>
+                        <p className="text-sm text-muted-foreground">Watch reels and photos on Instagram</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="gap-2 bg-white hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors"
+                        onClick={() => window.open((event.custom_social_links as any)?.instagram_url, '_blank')}
+                      >
+                        View on Instagram
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" x2="21" y1="14" y2="3" /></svg>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* RSVP Form */}
           {event.rsvp_enabled && (

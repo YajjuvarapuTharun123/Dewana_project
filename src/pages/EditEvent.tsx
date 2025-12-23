@@ -77,6 +77,8 @@ export default function EditEvent() {
         venueAddress: "",
         parkingNotes: "",
         dressCode: "",
+        youtubeLink: "",
+        instagramUrl: "",
         status: "draft",
     });
 
@@ -98,6 +100,10 @@ export default function EditEvent() {
                 const dateStr = startDateTime.toISOString().split("T")[0];
                 const timeStr = startDateTime.toTimeString().slice(0, 5);
 
+                // Safely handle Json type for custom_social_links
+                const socialLinks = data.custom_social_links as Record<string, string> | null;
+                const instagramUrl = socialLinks?.instagram_url || "";
+
                 setFormData({
                     eventType: data.event_type || "",
                     eventName: data.event_name || "",
@@ -109,6 +115,8 @@ export default function EditEvent() {
                     venueAddress: data.venue_address || "",
                     parkingNotes: data.parking_notes || "",
                     dressCode: data.dress_code || "",
+                    youtubeLink: data.youtube_link || "",
+                    instagramUrl: instagramUrl,
                     status: data.status || "draft",
                 });
                 setLoading(false);
@@ -150,6 +158,10 @@ export default function EditEvent() {
             const dateStr = startDateTime.toISOString().split("T")[0];
             const timeStr = startDateTime.toTimeString().slice(0, 5);
 
+            // Safely handle Json type for custom_social_links
+            const socialLinks = data.custom_social_links as Record<string, string> | null;
+            const instagramUrl = socialLinks?.instagram_url || "";
+
             setFormData({
                 eventType: data.event_type || "",
                 eventName: data.event_name || "",
@@ -161,6 +173,8 @@ export default function EditEvent() {
                 venueAddress: data.venue_address || "",
                 parkingNotes: data.parking_notes || "",
                 dressCode: data.dress_code || "",
+                youtubeLink: data.youtube_link || "",
+                instagramUrl: instagramUrl,
                 status: data.status || "draft",
             });
         } catch (error: any) {
@@ -227,6 +241,8 @@ export default function EditEvent() {
                     venue_address: formData.venueAddress || null,
                     parking_notes: formData.parkingNotes || null,
                     dress_code: formData.dressCode || null,
+                    youtube_link: formData.youtubeLink || null,
+                    custom_social_links: formData.instagramUrl ? { instagram_url: formData.instagramUrl } : null,
                     status: formData.status,
                 })
                 .eq("id", id)
@@ -464,6 +480,38 @@ export default function EditEvent() {
                                         <p className="text-sm text-muted-foreground mt-1">
                                             Only published events can accept RSVPs.
                                         </p>
+                                    </div>
+
+                                    <div className="space-y-4 pt-4 border-t">
+                                        <h3 className="text-lg font-semibold">Media Links</h3>
+
+                                        <div>
+                                            <Label htmlFor="youtubeLink">YouTube Video URL</Label>
+                                            <Input
+                                                id="youtubeLink"
+                                                placeholder="e.g., https://youtu.be/..."
+                                                value={formData.youtubeLink}
+                                                onChange={(e) => updateFormData("youtubeLink", e.target.value)}
+                                                className="mt-1"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Add a video message, pre-wedding shoot, or event teaser.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="instagramUrl">Instagram Post/Reel URL</Label>
+                                            <Input
+                                                id="instagramUrl"
+                                                placeholder="e.g., https://www.instagram.com/reel/..."
+                                                value={formData.instagramUrl}
+                                                onChange={(e) => updateFormData("instagramUrl", e.target.value)}
+                                                className="mt-1"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Link to an Instagram post or reel to show on the invitation.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -59,6 +59,8 @@ export default function CreateEvent() {
     venueAddress: "",
     parkingNotes: "",
     dressCode: "",
+    youtubeLink: "",
+    instagramUrl: "",
   });
 
   // Redirect if not logged in
@@ -128,6 +130,8 @@ export default function CreateEvent() {
           venue_address: formData.venueAddress || null,
           parking_notes: formData.parkingNotes || null,
           dress_code: formData.dressCode || null,
+          youtube_link: formData.youtubeLink || null,
+          custom_social_links: formData.instagramUrl ? { instagram_url: formData.instagramUrl } : null,
           status: "draft",
         })
         .select()
@@ -313,6 +317,38 @@ export default function CreateEvent() {
                       onChange={(e) => updateFormData("description", e.target.value)}
                       className="mt-1 min-h-[100px]"
                     />
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t">
+                    <h3 className="text-lg font-semibold">Media Links</h3>
+
+                    <div>
+                      <Label htmlFor="youtubeLink">YouTube Video URL</Label>
+                      <Input
+                        id="youtubeLink"
+                        placeholder="e.g., https://youtu.be/..."
+                        value={formData.youtubeLink}
+                        onChange={(e) => updateFormData("youtubeLink", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Add a video message, pre-wedding shoot, or event teaser.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="instagramUrl">Instagram Post/Reel URL</Label>
+                      <Input
+                        id="instagramUrl"
+                        placeholder="e.g., https://www.instagram.com/reel/..."
+                        value={formData.instagramUrl}
+                        onChange={(e) => updateFormData("instagramUrl", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Link to an Instagram post or reel to show on the invitation.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
