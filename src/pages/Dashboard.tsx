@@ -23,7 +23,9 @@ import {
   Download,
   Copy,
   X,
-  CheckCircle
+  CheckCircle,
+  Trash2,
+  User
 } from "lucide-react";
 import { formatDate, getEventTypeEmoji } from "@/lib/supabase-helpers";
 import {
@@ -47,6 +49,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Event {
   id: string;
@@ -70,9 +82,11 @@ export default function Dashboard() {
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [rsvpDialogOpen, setRsvpDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [rsvps, setRsvps] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -197,6 +211,51 @@ export default function Dashboard() {
     link.click();
   };
 
+  const handleDeleteClick = (event: Event) => {
+    setSelectedEvent(event);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedEvent || !user) return;
+
+    setIsDeleting(true);
+    try {
+      // First delete related RSVPs
+      await supabase
+        .from("rsvps")
+        .delete()
+        .eq("event_id", selectedEvent.id);
+
+      // Then delete the event
+      const { error } = await supabase
+        .from("events")
+        .delete()
+        .eq("id", selectedEvent.id)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Event Deleted",
+        description: "Your event has been successfully deleted.",
+      });
+
+      // Refresh events list
+      await fetchEvents();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete event",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setSelectedEvent(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -308,12 +367,12 @@ export default function Dashboard() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2">
-                        <Link to={`/event/${event.slug}`} className="flex-1">
+                        <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="flex-1">
                           <Button variant="outline" size="sm" className="w-full">
                             <Eye className="h-4 w-4 mr-1" />
                             View
                           </Button>
-                        </Link>
+                        </a>
                         <Link to={`/edit-event/${event.id}`} state={{ event }}>
                           <Button variant="ghost" size="sm">
                             <Edit className="h-4 w-4" />
@@ -341,6 +400,13 @@ export default function Dashboard() {
                             <DropdownMenuItem onClick={() => navigate(`/checkin/${event.id}`)}>
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Check-in Guests
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(event)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Event
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -537,6 +603,28 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedEvent?.event_name}"? This action cannot be undone. All RSVPs and event data will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete Event"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

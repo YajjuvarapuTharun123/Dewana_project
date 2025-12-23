@@ -140,6 +140,42 @@ export default function CheckIn() {
     };
 
     const handleCheckIn = async (rsvpId: string) => {
+        // First verify the RSVP exists and belongs to this event
+        const { data: rsvpData, error: fetchError } = await supabase
+            .from("rsvps")
+            .select("id, guest_name, event_id, checked_in")
+            .eq("id", rsvpId)
+            .single();
+
+        if (fetchError || !rsvpData) {
+            toast({
+                title: "Guest Not Found",
+                description: "This ticket doesn't match any RSVP. The guest may not have registered or the QR code is invalid.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Check if RSVP belongs to this event
+        if (rsvpData.event_id !== eventId) {
+            toast({
+                title: "Wrong Event",
+                description: "This ticket is for a different event. Please use the correct check-in page.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Check if already checked in
+        if (rsvpData.checked_in) {
+            toast({
+                title: "Already Checked In",
+                description: `${rsvpData.guest_name} has already been checked in.`,
+            });
+            return;
+        }
+
+        // Proceed with check-in
         const { error } = await supabase
             .from("rsvps")
             .update({
@@ -151,15 +187,15 @@ export default function CheckIn() {
         if (error) {
             toast({
                 title: "Error",
-                description: "Failed to check in guest",
+                description: "Failed to check in guest. Please try again.",
                 variant: "destructive",
             });
             return;
         }
 
         toast({
-            title: "Guest Checked In!",
-            description: "Guest has been successfully checked in",
+            title: "Guest Checked In! 🎉",
+            description: `${rsvpData.guest_name} has been successfully checked in.`,
         });
 
         await fetchRSVPs();
@@ -195,11 +231,13 @@ export default function CheckIn() {
                     console.log("Scanned Content:", decodedText);
 
                     try {
-                        // Check if it's an Event Invitation URL
-                        if (decodedText.startsWith("http") || decodedText.includes("dewana-invites")) {
+                        // Check if it's an Event Invitation URL (various patterns)
+                        if (decodedText.startsWith("http") ||
+                            decodedText.includes("/event/") ||
+                            decodedText.includes("dewana")) {
                             toast({
-                                title: "Wrong QR Code",
-                                description: "You scanned the Event Invitation. Please scan the Guest 'Entry Ticket' QR code.",
+                                title: "Wrong QR Code Type",
+                                description: "This is the Event Invitation QR. Please ask the guest to show their 'Entry Ticket' QR code that they received after RSVP.",
                                 variant: "destructive",
                             });
                             return;
@@ -218,7 +256,7 @@ export default function CheckIn() {
                         console.error("QR Parse Error:", error);
                         toast({
                             title: "Invalid Ticket",
-                            description: "This QR code is not a valid guest ticket.",
+                            description: "This QR code is not a valid guest entry ticket. Make sure the guest downloads their ticket after RSVP.",
                             variant: "destructive",
                         });
                     }

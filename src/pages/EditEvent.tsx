@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
 import { useToast } from "@/hooks/use-toast";
 import {
     ArrowLeft,
@@ -49,24 +50,20 @@ export default function EditEvent() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Failsafe timeout
+    // Failsafe timeout - extended for slower connections
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (loading) {
+            if (loading && user && id) {
                 setLoading(false);
-                if (!id && !user) return; // Don't show error if redirected
-                // Only show error if we're still on this page and stuck
-                if (user && id) {
-                    toast({
-                        title: "Request Timeout",
-                        description: "Loading took too long. Please try again.",
-                        variant: "destructive",
-                    });
-                }
+                toast({
+                    title: "Request Timeout",
+                    description: "Loading took too long. The form is ready but data may not be loaded. You can try again.",
+                    variant: "destructive",
+                });
             }
-        }, 8000);
+        }, 15000); // Extended to 15 seconds
         return () => clearTimeout(timer);
-    }, [loading, user, id]);
+    }, [loading, user, id, toast]);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -268,13 +265,18 @@ export default function EditEvent() {
             <Navbar />
 
             {loading && (
-                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
+                <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4 bg-card p-8 rounded-xl shadow-lg border">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                         <p className="text-muted-foreground">Loading Event...</p>
-                        <Button variant="outline" onClick={fetchEvent}>
-                            Retry
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setLoading(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="default" onClick={fetchEvent}>
+                                Retry
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -412,7 +414,7 @@ export default function EditEvent() {
                                         />
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <Label htmlFor="startDate">Event Date *</Label>
                                             <Input
@@ -425,11 +427,10 @@ export default function EditEvent() {
                                         </div>
                                         <div>
                                             <Label htmlFor="startTime">Event Time</Label>
-                                            <Input
+                                            <TimePicker
                                                 id="startTime"
-                                                type="time"
                                                 value={formData.startTime}
-                                                onChange={(e) => updateFormData("startTime", e.target.value)}
+                                                onChange={(value) => updateFormData("startTime", value)}
                                                 className="mt-1"
                                             />
                                         </div>

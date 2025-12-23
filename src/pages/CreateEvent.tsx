@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { TimePicker } from "@/components/ui/time-picker";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  ArrowLeft, 
-  ArrowRight, 
+import {
+  ArrowLeft,
+  ArrowRight,
   Check,
   PartyPopper,
   Cake,
@@ -102,7 +103,7 @@ export default function CreateEvent() {
 
     try {
       // Combine date and time
-      const startDateTime = formData.startTime 
+      const startDateTime = formData.startTime
         ? `${formData.startDate}T${formData.startTime}:00`
         : `${formData.startDate}T12:00:00`;
 
@@ -281,7 +282,7 @@ export default function CreateEvent() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="startDate">Event Date *</Label>
                       <Input
@@ -294,11 +295,10 @@ export default function CreateEvent() {
                     </div>
                     <div>
                       <Label htmlFor="startTime">Event Time</Label>
-                      <Input
+                      <TimePicker
                         id="startTime"
-                        type="time"
                         value={formData.startTime}
-                        onChange={(e) => updateFormData("startTime", e.target.value)}
+                        onChange={(value) => updateFormData("startTime", value)}
                         className="mt-1"
                       />
                     </div>
