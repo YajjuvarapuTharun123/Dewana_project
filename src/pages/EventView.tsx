@@ -145,15 +145,16 @@ export default function EventView() {
     }
 
     try {
-      const { data, error } = await supabase.from("rsvps").insert({
-        event_id: event.id,
-        guest_name: rsvpForm.guest_name,
-        guest_email: rsvpForm.guest_email || null,
-        guest_phone: rsvpForm.guest_phone || null,
-        status: rsvpForm.status,
-        num_guests: rsvpForm.num_guests,
-        message: rsvpForm.message || null,
-      }).select().single();
+      // Use RPC function to bypass RLS restrictions for anonymous inserts
+      const { data, error } = await supabase.rpc("create_guest_rsvp", {
+        p_event_id: event.id,
+        p_guest_name: rsvpForm.guest_name,
+        p_guest_email: rsvpForm.guest_email || null,
+        p_guest_phone: rsvpForm.guest_phone || null,
+        p_status: rsvpForm.status,
+        p_num_guests: rsvpForm.num_guests,
+        p_message: rsvpForm.message || null,
+      });
 
       if (error) throw error;
 
@@ -164,14 +165,14 @@ export default function EventView() {
 
       // Generate guest QR code with Dewana logo
       if (data && rsvpForm.status === "yes") {
-        const qrData = JSON.stringify({ rsvpId: data.id });
+        const qrData = JSON.stringify({ rsvpId: data });
         const qrDataUrl = await generateQRCodeWithLogo(qrData, {
           size: 400,
           logoSize: 80,
           margin: 2,
         });
         setGuestQRCode(qrDataUrl);
-        setGuestRSVPId(data.id);
+        setGuestRSVPId(data);
         setShowGuestQR(true);
       }
 
@@ -185,6 +186,7 @@ export default function EventView() {
         message: "",
       });
     } catch (error: any) {
+      console.error("RSVP Error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to submit RSVP",
