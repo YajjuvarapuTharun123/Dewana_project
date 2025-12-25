@@ -13,17 +13,29 @@ export function Footer() {
               Technology meets Tradition
             </p>
           </div>
-          
+
           <div className="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-primary transition-colors">
               Home
+            </Link>
+            <Link to="/about" className="hover:text-primary transition-colors">
+              About
+            </Link>
+            <Link to="/faq" className="hover:text-primary transition-colors">
+              FAQ
+            </Link>
+            <Link to="/contact" className="hover:text-primary transition-colors">
+              Contact Us
+            </Link>
+            <Link to="/terms" className="hover:text-primary transition-colors">
+              Terms & Conditions
             </Link>
             <Link to="/dashboard" className="hover:text-primary transition-colors">
               Create Invite
             </Link>
           </div>
         </div>
-        
+
         <div className="mt-8 pt-8 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground flex items-center gap-1">
             Made with <Heart className="h-4 w-4 text-secondary fill-secondary" /> for Indian celebrations

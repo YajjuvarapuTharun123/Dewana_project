@@ -10,29 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import QRCode from "qrcode";
-import { generateQRCodeWithLogo } from "@/lib/qr-code-utils";
-import { getYouTubeEmbedUrl } from "@/lib/video-utils";
 import {
   Calendar,
   MapPin,
   Clock,
-  Users,
   PartyPopper,
   Share2,
-  QrCode as QrCodeIcon,
   Heart,
-  Download,
 } from "lucide-react";
+import { getYouTubeEmbedUrl, isYouTubeVideoUrl, isYouTubeChannelUrl, isInstagramPostUrl, isInstagramProfileUrl } from "@/lib/video-utils";
 import { formatDate, getEventTypeEmoji } from "@/lib/supabase-helpers";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface Event {
   id: string;
@@ -51,9 +39,15 @@ interface Event {
   slug: string;
   view_count?: number;
   youtube_link?: string | null;
-  custom_social_links?: any | null;
+  custom_social_links?: any[] | any | null; // Can be array (new) or object (old)
   google_photos_url?: string | null;
   google_drive_url?: string | null;
+  sub_events?: {
+    id: string;
+    name: string;
+    date_time: string;
+    location_name: string | null;
+  }[];
 }
 
 interface RSVPForm {
@@ -73,9 +67,6 @@ export default function EventView() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [submittingRSVP, setSubmittingRSVP] = useState(false);
-  const [showGuestQR, setShowGuestQR] = useState(false);
-  const [guestQRCode, setGuestQRCode] = useState<string>("");
-  const [guestRSVPId, setGuestRSVPId] = useState<string>("");
   const [existingRSVP, setExistingRSVP] = useState<any>(null);
   const [rsvpForm, setRsvpForm] = useState<RSVPForm>({
     guest_name: "",
@@ -126,22 +117,13 @@ export default function EventView() {
     if (data) {
       console.log("Found existing RSVP:", data);
       setExistingRSVP(data);
-      if (data.status === "yes") {
-        const qrData = JSON.stringify({ rsvpId: data.id });
-        generateQRCodeWithLogo(qrData, {
-          size: 400,
-          logoSize: 80,
-          margin: 2,
-        }).then(url => setGuestQRCode(url));
-        setGuestRSVPId(data.id);
-      }
     }
   };
 
   const fetchEvent = async () => {
     const { data, error } = await supabase
       .from("events")
-      .select("*")
+      .select("*, sub_events(*)") // Fetch sub_events
       .eq("slug", slug)
       .single();
 
@@ -153,6 +135,11 @@ export default function EventView() {
       });
       navigate("/");
       return;
+    }
+
+    // Sort sub_events by date_time if present
+    if (data.sub_events) {
+      data.sub_events.sort((a: any, b: any) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime());
     }
 
     setEvent(data);
@@ -220,31 +207,17 @@ export default function EventView() {
       if (error) throw error;
 
       toast({
-        title: "RSVP Submitted!",
+        title: "✅ RSVP Completed Successfully!",
         description: "Thank you for your response. We look forward to seeing you!",
       });
 
-      // Generate guest QR code with Dewana logo
-      if (data && rsvpForm.status === "yes") {
-        const qrData = JSON.stringify({ rsvpId: data });
-        const qrDataUrl = await generateQRCodeWithLogo(qrData, {
-          size: 400,
-          logoSize: 80,
-          margin: 2,
-        });
-        setGuestQRCode(qrDataUrl);
-        setGuestRSVPId(data);
-        setShowGuestQR(true);
-      }
-
-      // Reset form
-      setRsvpForm({
-        guest_name: "",
-        guest_email: "",
-        guest_phone: "",
-        status: "yes",
-        num_guests: 1,
-        message: "",
+      // Immediately set existingRSVP to hide the form and show success
+      setExistingRSVP({
+        id: data,
+        status: rsvpForm.status,
+        num_guests: rsvpForm.num_guests,
+        guest_name: rsvpForm.guest_name,
+        guest_email: rsvpForm.guest_email,
       });
     } catch (error: any) {
       console.error("RSVP Error:", error);
@@ -258,13 +231,7 @@ export default function EventView() {
     }
   };
 
-  const downloadGuestQR = () => {
-    if (!guestQRCode) return;
-    const link = document.createElement("a");
-    link.download = `guest-qr-${guestRSVPId}.png`;
-    link.href = guestQRCode;
-    link.click();
-  };
+
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
@@ -396,12 +363,46 @@ export default function EventView() {
                   </div>
                 )}
               </div>
+
+              {/* Sub Events */}
+              {event.sub_events && event.sub_events.length > 0 && (
+                <div className="mb-6 border-t pt-6">
+                  <h3 className="text-xl font-display font-bold mb-4">Itinerary</h3>
+                  <div className="space-y-4">
+                    {event.sub_events.map((subEvent, index) => (
+                      <div key={index} className="flex gap-4 p-4 rounded-lg bg-gray-50 border">
+                        <div className="flex-shrink-0 flex flex-col items-center justify-center w-16 h-16 bg-white rounded-md border shadow-sm">
+                          <span className="text-xs font-bold uppercase text-muted-foreground">
+                            {new Date(subEvent.date_time).toLocaleString('en-US', { month: 'short' })}
+                          </span>
+                          <span className="text-xl font-bold text-primary">
+                            {new Date(subEvent.date_time).getDate()}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-lg">{subEvent.name}</h4>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(subEvent.date_time)}
+                          </div>
+                          {subEvent.location_name && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <MapPin className="w-3 h-3" />
+                              {subEvent.location_name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
 
           {/* Video Gallery */}
-          {(event.youtube_link || (event.custom_social_links as any)?.instagram_url) && (
+          {(event.youtube_link || event.google_photos_url || event.google_drive_url || (Array.isArray(event.custom_social_links) && event.custom_social_links.length > 0) || (event.custom_social_links as any)?.instagram_url) && (
             <div className="invitation-card mb-8 p-6 md:p-8">
               <div className="flex items-center gap-2 mb-6">
                 <div className="bg-primary/10 p-2 rounded-full">
@@ -411,7 +412,7 @@ export default function EventView() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Google Photos Link */}
+                {/* Google Photos Link - Always opens externally */}
                 {event.google_photos_url && (
                   <div className="space-y-2">
                     <h3 className="font-medium flex items-center gap-2">
@@ -463,34 +464,152 @@ export default function EventView() {
                   </div>
                 )}
 
-
-                {/* YouTube Embed */}
-                {event.youtube_link && getYouTubeEmbedUrl(event.youtube_link) && (
-                  <div className="space-y-2">
-                    <h3 className="font-medium flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
-                      Watch Video
-                    </h3>
-                    <div className="aspect-video rounded-xl overflow-hidden bg-black shadow-md">
-                      <iframe
-                        src={getYouTubeEmbedUrl(event.youtube_link)!}
-                        title="YouTube video player"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="w-full h-full border-0"
-                      ></iframe>
+                {/* YouTube - Video (embed) or Channel (button) */}
+                {event.youtube_link && (
+                  isYouTubeVideoUrl(event.youtube_link) && getYouTubeEmbedUrl(event.youtube_link) ? (
+                    <div className="space-y-2">
+                      <h3 className="font-medium flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                        Watch Video
+                      </h3>
+                      <div className="aspect-video rounded-xl overflow-hidden bg-black shadow-md">
+                        <iframe
+                          src={getYouTubeEmbedUrl(event.youtube_link)!}
+                          title="YouTube video player"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          className="w-full h-full border-0"
+                        ></iframe>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <h3 className="font-medium flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                        YouTube
+                      </h3>
+                      <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 min-h-[200px]">
+                        <div className="bg-white p-3 rounded-full shadow-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-lg">{isYouTubeChannelUrl(event.youtube_link) ? "Visit Our Channel" : "Watch on YouTube"}</p>
+                          <p className="text-sm text-muted-foreground">Open in YouTube</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="gap-2 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                          onClick={() => window.open(event.youtube_link!, '_blank')}
+                        >
+                          Open on YouTube
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" x2="21" y1="14" y2="3" /></svg>
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 )}
 
-                {/* Instagram Link/Embed */}
-                {(event.custom_social_links as any)?.instagram_url && (
+                {/* Social Links from Array format */}
+                {Array.isArray(event.custom_social_links) && event.custom_social_links.map((link: any, index: number) => {
+                  const url = link.url;
+                  const platform = link.platform?.toLowerCase() || '';
+                  const isInstagram = platform.includes('instagram') || url?.includes('instagram.com');
+                  const isYouTube = platform.includes('youtube') || url?.includes('youtube.com') || url?.includes('youtu.be');
+
+                  if (isInstagram && url) {
+                    return (
+                      <div key={index} className="space-y-2">
+                        <h3 className="font-medium flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+                          {isInstagramProfileUrl(url) ? 'Instagram Profile' : 'Instagram'}
+                        </h3>
+                        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 min-h-[200px]">
+                          <div className="bg-white p-3 rounded-full shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-lg">{isInstagramProfileUrl(url) ? 'View Profile' : 'Check out our moments'}</p>
+                            <p className="text-sm text-muted-foreground">{isInstagramPostUrl(url) ? 'Watch reel or post' : 'Open on Instagram'}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            className="gap-2 bg-white hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200 transition-colors"
+                            onClick={() => window.open(url, '_blank')}
+                          >
+                            Open on Instagram
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" x2="21" y1="14" y2="3" /></svg>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (isYouTube && url && !event.youtube_link) {
+                    return (
+                      <div key={index} className="space-y-2">
+                        <h3 className="font-medium flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                          YouTube
+                        </h3>
+                        <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 min-h-[200px]">
+                          <div className="bg-white p-3 rounded-full shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m10 15 5-3-5-3z" /></svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-lg">{isYouTubeChannelUrl(url) ? 'Visit Channel' : 'Watch Video'}</p>
+                            <p className="text-sm text-muted-foreground">Open on YouTube</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            className="gap-2 bg-white hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                            onClick={() => window.open(url, '_blank')}
+                          >
+                            Open on YouTube
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" x2="21" y1="14" y2="3" /></svg>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Generic social link
+                  if (url) {
+                    return (
+                      <div key={index} className="space-y-2">
+                        <h3 className="font-medium flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                          {link.platform || 'Link'}
+                        </h3>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block group"
+                        >
+                          <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 min-h-[200px] transition-all group-hover:shadow-md">
+                            <div className="bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                            </div>
+                            <div>
+                              <p className="font-medium text-lg group-hover:text-primary transition-colors">Open {link.platform || 'Link'}</p>
+                              <p className="text-sm text-muted-foreground truncate max-w-[200px]">{url}</p>
+                            </div>
+                          </div>
+                        </a>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+
+                {/* Legacy: Instagram from object format */}
+                {!Array.isArray(event.custom_social_links) && (event.custom_social_links as any)?.instagram_url && (
                   <div className="space-y-2">
                     <h3 className="font-medium flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
-                      On Instagram
+                      Instagram
                     </h3>
-                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 h-full min-h-[200px]">
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 min-h-[200px]">
                       <div className="bg-white p-3 rounded-full shadow-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
                       </div>
@@ -519,23 +638,17 @@ export default function EventView() {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                 <PartyPopper className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="text-2xl font-display font-bold mb-2">You're on the list!</h2>
+              <h2 className="text-2xl font-display font-bold mb-2">RSVP Completed Successfully!</h2>
+              <p className="text-muted-foreground mb-4">
+                You're on the list! 🎉
+              </p>
               <p className="text-muted-foreground mb-6">
-                You have RSVP'd <strong>{existingRSVP.status.toUpperCase()}</strong> with {existingRSVP.num_guests} guests.
+                You have RSVP'd <strong className="text-primary">{existingRSVP.status.toUpperCase()}</strong> with {existingRSVP.num_guests} guest{existingRSVP.num_guests > 1 ? 's' : ''}.
               </p>
 
               {existingRSVP.status === "yes" && (
                 <div className="flex flex-col items-center gap-4">
-                  {guestQRCode && (
-                    <img
-                      src={guestQRCode}
-                      alt="Entry Ticket"
-                      className="w-48 h-48 border rounded-lg shadow-sm"
-                    />
-                  )}
-                  <Button onClick={() => setShowGuestQR(true)} variant="outline">
-                    View Full Ticket
-                  </Button>
+                  <p className="text-sm text-muted-foreground">We are excited to see you there!</p>
                 </div>
               )}
             </div>
@@ -573,6 +686,8 @@ export default function EventView() {
                       }
                       placeholder="your@email.com"
                       className="mt-1"
+                      readOnly={!!user?.email}
+                      disabled={!!user?.email}
                     />
                   </div>
                   <div>
@@ -662,38 +777,6 @@ export default function EventView() {
       </main>
 
       <Footer />
-
-      {/* Guest QR Code Dialog */}
-      <Dialog open={showGuestQR} onOpenChange={setShowGuestQR}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Your Entry Ticket</DialogTitle>
-            <DialogDescription>
-              Save this QR code to check in at the event
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4">
-            {guestQRCode && (
-              <img
-                src={guestQRCode}
-                alt="Guest QR Code"
-                className="w-64 h-64 border rounded-lg"
-              />
-            )}
-            <p className="text-sm text-muted-foreground text-center">
-              Show this QR code to the host for quick check-in
-            </p>
-            <Button
-              onClick={downloadGuestQR}
-              variant="gradient"
-              className="w-full gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download QR Code
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -9,24 +9,19 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import QRCode from "qrcode";
-import { generateQRCodeWithLogo } from "@/lib/qr-code-utils";
+import { useEventNotifications } from "@/hooks/useEventNotifications";
 import {
   Plus,
   Calendar,
-  Users,
   Eye,
-  QrCode as QrCodeIcon,
   Share2,
   Edit,
   MoreVertical,
   Sparkles,
-  Download,
   Copy,
-  X,
-  CheckCircle,
   Trash2,
-  User
+  Users,
+  CheckCircle
 } from "lucide-react";
 import { formatDate, getEventTypeEmoji } from "@/lib/supabase-helpers";
 import {
@@ -82,14 +77,15 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"hosting" | "attending">("hosting");
 
   // Dialog states
-  const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [rsvpDialogOpen, setRsvpDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [rsvps, setRsvps] = useState<any[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Enable event notifications for all events (hosting + attending)
+  useEventNotifications([...events, ...attendingEvents]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -193,26 +189,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleQRCode = async (event: Event) => {
-    setSelectedEvent(event);
-    const eventUrl = `${window.location.origin}/event/${event.slug}`;
-    try {
-      // Generate QR code with Dewana logo
-      const qrDataUrl = await generateQRCodeWithLogo(eventUrl, {
-        size: 400,
-        logoSize: 80,
-        margin: 2,
-      });
-      setQrCodeDataUrl(qrDataUrl);
-      setQrDialogOpen(true);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate QR code",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleShare = async (event: Event) => {
     setSelectedEvent(event);
@@ -266,13 +242,7 @@ export default function Dashboard() {
     setRsvpDialogOpen(true);
   };
 
-  const downloadQRCode = () => {
-    if (!qrCodeDataUrl || !selectedEvent) return;
-    const link = document.createElement("a");
-    link.download = `${selectedEvent.slug}-qr-code.png`;
-    link.href = qrCodeDataUrl;
-    link.click();
-  };
+
 
   const handleDeleteClick = (event: Event) => {
     setSelectedEvent(event);
@@ -480,10 +450,6 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleQRCode(event)}>
-                                  <QrCodeIcon className="h-4 w-4 mr-2" />
-                                  Event Invite
-                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleShare(event)}>
                                   <Share2 className="h-4 w-4 mr-2" />
                                   Share
@@ -567,44 +533,7 @@ export default function Dashboard() {
 
       <Footer />
 
-      {/* QR Code Dialog */}
-      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Event QR Code</DialogTitle>
-            <DialogDescription>
-              Share this QR code for guests to access your event invitation
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center gap-4">
-            {qrCodeDataUrl && (
-              <img
-                src={qrCodeDataUrl}
-                alt="Event QR Code"
-                className="w-64 h-64 border rounded-lg"
-              />
-            )}
-            <div className="flex gap-2 w-full">
-              <Button
-                onClick={downloadQRCode}
-                variant="outline"
-                className="flex-1 gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download
-              </Button>
-              <Button
-                onClick={() => handleCopyLink()}
-                variant="outline"
-                className="flex-1 gap-2"
-              >
-                <Copy className="h-4 w-4" />
-                Copy Link
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Share Dialog */}
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>

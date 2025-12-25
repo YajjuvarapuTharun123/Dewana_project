@@ -107,7 +107,6 @@ export function Navbar() {
               )}
             </div>
 
-            {/* Mobile Menu Button - OPTIONAL now with BottomNav, but keeping for Profile/Settings/Logout */}
             <button
               className="md:hidden p-2"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -118,9 +117,9 @@ export function Navbar() {
 
           {/* Mobile Menu Overlay */}
           {mobileMenuOpen && (
-            <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
+            <div className="md:hidden absolute top-16 left-0 right-0 bg-background/95 backdrop-blur-xl border-b border-border/50 animate-in slide-in-from-top-2 p-4 shadow-lg">
               {(deferredPrompt || isIOS) && (
-                <div className="px-2 pb-2">
+                <div className="mb-4">
                   <Button variant="outline" className="w-full gap-2" onClick={handleInstallClick}>
                     <Download className="h-4 w-4" />
                     Install App
@@ -128,21 +127,36 @@ export function Navbar() {
                 </div>
               )}
               {user ? (
-                <div className="space-y-2">
-                  {/* Items are now in BottomNav, but Logout is important here */}
+                <div className="space-y-3">
+                  <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </Button>
+                  </Link>
+                  <div className="h-px bg-border/50 my-2" />
                   <Button
                     variant="ghost"
-                    className="w-full justify-start gap-2 text-destructive"
-                    onClick={handleSignOut}
+                    className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      handleSignOut();
+                      setMobileMenuOpen(false);
+                    }}
                   >
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full">Sign In</Button>
+                    <Button variant="ghost" className="w-full justify-start">Sign In</Button>
                   </Link>
                   <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="gradient" className="w-full">Create Free Invite</Button>

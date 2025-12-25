@@ -25,9 +25,16 @@ export default function Profile() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [saving, setSaving] = useState(false);
-    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+        // Load from localStorage on init
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('dewana_notifications') === 'true';
+        }
+        return false;
+    });
     const [formData, setFormData] = useState({
-        name: "",
+        firstName: "",
+        lastName: "",
         email: "",
     });
 
@@ -37,23 +44,106 @@ export default function Profile() {
         }
     }, [user, authLoading, navigate]);
 
-    useEffect(() => {
-        if (user) {
-            setFormData({
-                name: user.user_metadata?.name || user.user_metadata?.full_name || "",
-                email: user.email || "",
+    // Handle notification toggle
+    const handleNotificationToggle = async (checked: boolean) => {
+        if (checked) {
+            // Request notification permission
+            if ('Notification' in window) {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    setNotificationsEnabled(true);
+                    localStorage.setItem('dewana_notifications', 'true');
+                    toast({
+                        title: "Notifications Enabled",
+                        description: "You will receive reminders for your upcoming events.",
+                    });
+                } else {
+                    toast({
+                        title: "Permission Denied",
+                        description: "Please allow notifications in your browser settings.",
+                        variant: "destructive",
+                    });
+                }
+            } else {
+                toast({
+                    title: "Not Supported",
+                    description: "Notifications are not supported in this browser.",
+                    variant: "destructive",
+                });
+            }
+        } else {
+            setNotificationsEnabled(false);
+            localStorage.setItem('dewana_notifications', 'false');
+            toast({
+                title: "Notifications Disabled",
+                description: "You will not receive event reminders.",
             });
         }
+    };
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            if (!user) return;
+
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('first_name, last_name, name')
+                    .eq('id', user.id)
+                    .single();
+
+                if (data) {
+                    // Use profile data if available, fall back to metadata or parsing full name
+                    let first = data.first_name || "";
+                    let last = data.last_name || "";
+
+                    if (!first && !last && data.name) {
+                        const parts = data.name.split(' ');
+                        first = parts[0];
+                        last = parts.slice(1).join(' ');
+                    } else if (!first && !last && user.user_metadata?.full_name) {
+                        const parts = user.user_metadata.full_name.split(' ');
+                        first = parts[0];
+                        last = parts.slice(1).join(' ');
+                    }
+
+                    setFormData({
+                        firstName: first,
+                        lastName: last,
+                        email: user.email || "",
+                    });
+                } else {
+                    // No profile data found, try using metadata directly
+                    populateFromMetadata();
+                }
+            } catch (error) {
+                console.error("Error fetching profile:", error);
+                // Fallback to metadata on error
+                populateFromMetadata();
+            }
+        };
+
+        const populateFromMetadata = () => {
+            if (user?.user_metadata?.full_name) {
+                const parts = user.user_metadata.full_name.split(' ');
+                const first = parts[0];
+                const last = parts.slice(1).join(' ');
+                setFormData({
+                    firstName: first,
+                    lastName: last,
+                    email: user.email || "",
+                });
+            } else {
+                setFormData(prev => ({ ...prev, email: user.email || "" }));
+            }
+        };
+
+        fetchProfile();
     }, [user]);
 
-    const getInitials = (name?: string | null) => {
-        if (!name) return "U";
-        return name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2);
+    const getInitials = (first?: string, last?: string) => {
+        if (!first && !last) return "U";
+        return `${first?.[0] || ""}${last?.[0] || ""}`.toUpperCase();
     };
 
     const handleSave = async () => {
@@ -61,11 +151,23 @@ export default function Profile() {
 
         setSaving(true);
         try {
-            const { error } = await supabase.auth.updateUser({
-                data: { name: formData.name, full_name: formData.name },
-            });
+            const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+            const { error } = await supabase
+                .from('profiles')
+                .upsert({
+                    id: user.id,
+                    first_name: formData.firstName,
+                    last_name: formData.lastName,
+                    name: fullName,
+                    updated_at: new Date().toISOString(),
+                });
 
             if (error) throw error;
+
+            // Update auth metadata
+            await supabase.auth.updateUser({
+                data: { name: fullName, full_name: fullName },
+            });
 
             toast({
                 title: "Profile Updated",
@@ -131,30 +233,46 @@ export default function Profile() {
                             <Avatar className="h-24 w-24 border-4 border-primary/20 mb-4">
                                 <AvatarImage src={user.user_metadata?.avatar_url} />
                                 <AvatarFallback className="bg-primary/10 text-primary text-2xl font-heading">
-                                    {getInitials(formData.name || user.email)}
+                                    {getInitials(formData.firstName, formData.lastName)}
                                 </AvatarFallback>
                             </Avatar>
                             <h2 className="text-xl font-heading font-semibold">
-                                {formData.name || "Your Name"}
+                                {formData.firstName} {formData.lastName}
                             </h2>
                             <p className="text-muted-foreground">{user.email}</p>
                         </div>
 
                         {/* Form */}
                         <div className="space-y-6">
-                            <div>
-                                <Label htmlFor="name" className="flex items-center gap-2 mb-2">
-                                    <User className="h-4 w-4" />
-                                    Full Name
-                                </Label>
-                                <Input
-                                    id="name"
-                                    value={formData.name}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, name: e.target.value })
-                                    }
-                                    placeholder="Enter your full name"
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="firstName" className="flex items-center gap-2 mb-2">
+                                        <User className="h-4 w-4" />
+                                        First Name
+                                    </Label>
+                                    <Input
+                                        id="firstName"
+                                        value={formData.firstName}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, firstName: e.target.value })
+                                        }
+                                        placeholder="First Name"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="lastName" className="flex items-center gap-2 mb-2">
+                                        <User className="h-4 w-4" />
+                                        Last Name
+                                    </Label>
+                                    <Input
+                                        id="lastName"
+                                        value={formData.lastName}
+                                        onChange={(e) =>
+                                            setFormData({ ...formData, lastName: e.target.value })
+                                        }
+                                        placeholder="Last Name"
+                                    />
+                                </div>
                             </div>
 
                             <div>
@@ -196,13 +314,7 @@ export default function Profile() {
                                     </div>
                                     <Switch
                                         checked={notificationsEnabled}
-                                        onCheckedChange={(checked) => {
-                                            setNotificationsEnabled(checked);
-                                            toast({
-                                                title: checked ? "Notifications Enabled" : "Notifications Disabled",
-                                                description: checked ? "You will receive reminders for your events." : "You will not receive reminders.",
-                                            });
-                                        }}
+                                        onCheckedChange={handleNotificationToggle}
                                     />
                                 </div>
                             </div>

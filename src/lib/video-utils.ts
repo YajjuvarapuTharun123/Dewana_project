@@ -57,3 +57,45 @@ export const isYoutubeUrl = (url: string): boolean => {
 export const isInstagramUrl = (url: string): boolean => {
     return url.includes('instagram.com');
 };
+
+// Check if URL is a YouTube video (embeddable)
+export const isYouTubeVideoUrl = (url: string): boolean => {
+    if (!url) return false;
+    // Video patterns: watch?v=, youtu.be/, embed/, shorts/
+    const videoPattern = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]{11}).*/;
+    return videoPattern.test(url);
+};
+
+// Check if URL is a YouTube channel/profile (not embeddable)
+export const isYouTubeChannelUrl = (url: string): boolean => {
+    if (!url) return false;
+    // Channel patterns: @username, /channel/, /c/, /user/
+    const channelPattern = /(youtube\.com\/@|youtube\.com\/channel\/|youtube\.com\/c\/|youtube\.com\/user\/)/;
+    return channelPattern.test(url);
+};
+
+// Check if URL is an Instagram post/reel (potentially embeddable)
+export const isInstagramPostUrl = (url: string): boolean => {
+    if (!url) return false;
+    // Post patterns: /p/, /reel/, /reels/, /tv/
+    const postPattern = /instagram\.com\/(p|reel|reels|tv)\//;
+    return postPattern.test(url);
+};
+
+// Check if URL is an Instagram profile (not embeddable)
+export const isInstagramProfileUrl = (url: string): boolean => {
+    if (!url) return false;
+    // Profile: instagram.com/username (no /p/, /reel/, etc.)
+    if (!url.includes('instagram.com')) return false;
+    const postPattern = /instagram\.com\/(p|reel|reels|tv|explore|stories)\//;
+    if (postPattern.test(url)) return false;
+    // Likely a profile
+    return true;
+};
+
+// Check if URL is a Google Photos link
+export const isGooglePhotosUrl = (url: string): boolean => {
+    if (!url) return false;
+    return url.includes('photos.google.com') || url.includes('photos.app.goo.gl');
+};
+

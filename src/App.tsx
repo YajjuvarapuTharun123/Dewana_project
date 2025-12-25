@@ -10,8 +10,12 @@ import Dashboard from "./pages/Dashboard";
 import CreateEvent from "./pages/CreateEvent";
 import EventView from "./pages/EventView";
 import EditEvent from "./pages/EditEvent";
-import CheckIn from "./pages/CheckIn";
 import Profile from "./pages/Profile";
+import CompleteProfile from "./pages/CompleteProfile";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import FAQ from "./pages/FAQ";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
 import { PWAProvider } from "@/contexts/PWAContext";
@@ -35,8 +39,12 @@ const App = () => (
               <Route path="/create-event" element={<CreateEvent />} />
               <Route path="/event/:slug" element={<EventView />} />
               <Route path="/edit-event/:id" element={<EditEvent />} />
-              <Route path="/checkin/:eventId" element={<CheckIn />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/complete-profile" element={<CompleteProfile />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/terms" element={<Terms />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -11,16 +11,17 @@ import { Label } from "@/components/ui/label";
 import { TimePicker } from "@/components/ui/time-picker";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
   PartyPopper,
   Cake,
   Flame,
   GraduationCap,
   Baby,
   Briefcase,
-  Sparkles
+  Sparkles,
+  Plus,
+  Trash2,
+  Image as ImageIcon,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,18 +35,24 @@ const eventTypes = [
   { id: "other", name: "Other", emoji: "🎉", icon: Sparkles },
 ];
 
-const steps = [
-  { id: 1, name: "Event Type" },
-  { id: 2, name: "Basic Info" },
-  { id: 3, name: "Venue" },
-];
+interface SubEvent {
+  name: string;
+  date: string;
+  time: string;
+  location: string;
+}
+
+interface SocialLink {
+  platform: string;
+  url: string;
+}
 
 export default function CreateEvent() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -60,10 +67,13 @@ export default function CreateEvent() {
     parkingNotes: "",
     dressCode: "",
     youtubeLink: "",
-    instagramUrl: "",
     googlePhotosUrl: "",
     googleDriveUrl: "",
   });
+
+  const [subEvents, setSubEvents] = useState<SubEvent[]>([]);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [customLink, setCustomLink] = useState(""); // Simplified for now, or just part of social links
 
   // Redirect if not logged in
   if (!loading && !user) {
@@ -75,50 +85,95 @@ export default function CreateEvent() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.eventType !== "";
-      case 2:
-        return formData.eventName !== "" && formData.startDate !== "";
-      case 3:
-        return true;
-      default:
-        return false;
-    }
+  const handleAddSubEvent = () => {
+    setSubEvents([...subEvents, { name: "", date: "", time: "", location: "" }]);
   };
 
-  const handleNext = () => {
-    if (currentStep < steps.length) {
-      setCurrentStep(currentStep + 1);
-    }
+  const updateSubEvent = (index: number, field: keyof SubEvent, value: string) => {
+    const newSubEvents = [...subEvents];
+    newSubEvents[index][field] = value;
+    setSubEvents(newSubEvents);
   };
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+  const removeSubEvent = (index: number) => {
+    setSubEvents(subEvents.filter((_, i) => i !== index));
+  };
+
+  const handleAddSocialLink = () => {
+    if (socialLinks.length >= 5) {
+      toast({ title: "Limit Reached", description: "You can add up to 5 social links.", variant: "destructive" });
+      return;
     }
+    setSocialLinks([...socialLinks, { platform: "Instagram", url: "" }]);
+  };
+
+  const updateSocialLink = (index: number, field: keyof SocialLink, value: string) => {
+    const newLinks = [...socialLinks];
+    newLinks[index][field] = value;
+    setSocialLinks(newLinks);
+  };
+
+  const removeSocialLink = (index: number) => {
+    setSocialLinks(socialLinks.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
     if (!user) return;
+    if (!formData.eventType || !formData.eventName || !formData.startDate) {
+      toast({ title: "Missing Fields", description: "Please fill in all required fields (*)", variant: "destructive" });
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      // Combine date and time
+      // 1. Upload Cover Photo
+      let coverImageUrl = null;
+      if (coverFile) {
+        const fileExt = coverFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        console.log("Uploading cover photo:", { filePath, fileSize: coverFile.size, fileType: coverFile.type });
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('event-covers')
+          .upload(filePath, coverFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error("Cover photo upload error:", uploadError);
+          toast({
+            title: "Cover Photo Upload Failed",
+            description: uploadError.message || "Could not upload cover photo. The storage bucket may not be configured.",
+            variant: "destructive",
+          });
+          // Continue without cover photo
+        } else {
+          console.log("Upload successful:", uploadData);
+          const { data: { publicUrl } } = supabase.storage
+            .from('event-covers')
+            .getPublicUrl(filePath);
+          coverImageUrl = publicUrl;
+          console.log("Cover image URL:", coverImageUrl);
+        }
+      }
+
+      // 2. Prepare Event Data
       const startDateTime = formData.startTime
         ? `${formData.startDate}T${formData.startTime}:00`
         : `${formData.startDate}T12:00:00`;
 
-      // Generate a simple slug from event name
       const baseSlug = formData.eventName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
       const slug = `${baseSlug}-${Date.now().toString(36)}`;
 
-      const { data, error } = await supabase
+      // 3. Insert Event
+      const { data: event, error: eventError } = await supabase
         .from("events")
         .insert({
           user_id: user.id,
@@ -133,19 +188,39 @@ export default function CreateEvent() {
           parking_notes: formData.parkingNotes || null,
           dress_code: formData.dressCode || null,
           youtube_link: formData.youtubeLink || null,
-          custom_social_links: formData.instagramUrl ? { instagram_url: formData.instagramUrl } : null,
           google_photos_url: formData.googlePhotosUrl || null,
           google_drive_url: formData.googleDriveUrl || null,
-          status: "draft",
+          cover_image_url: coverImageUrl,
+          custom_social_links: socialLinks as any,
+          status: "published", // Direct publish
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (eventError) throw eventError;
+
+      // 4. Insert Sub-events
+      if (subEvents.length > 0 && event) {
+        const subEventsData = subEvents.map(se => ({
+          event_id: event.id,
+          name: se.name,
+          date_time: se.time ? `${se.date}T${se.time}:00` : `${se.date}T12:00:00`,
+          location_name: se.location,
+        }));
+
+        const { error: subEventError } = await supabase
+          .from('sub_events')
+          .insert(subEventsData);
+
+        if (subEventError) {
+          console.error("Error inserting subevents", subEventError);
+          toast({ title: "Warning", description: "Event created but sub-events failed to save.", variant: "default" });
+        }
+      }
 
       toast({
         title: "Event Created!",
-        description: "Your invitation is ready. You can now customize it further.",
+        description: "Your invitation is ready to be shared.",
       });
 
       navigate("/dashboard");
@@ -174,315 +249,295 @@ export default function CreateEvent() {
 
       <main className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-3xl">
-          {/* Progress Steps */}
-          <div className="mb-8">
-            <div className="flex items-center justify-center gap-2 md:gap-4">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                  <div
-                    className={cn(
-                      "flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all",
-                      currentStep >= step.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {currentStep > step.id ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      step.id
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "ml-2 text-sm hidden sm:inline",
-                      currentStep >= step.id
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {step.name}
-                  </span>
-                  {index < steps.length - 1 && (
-                    <div
-                      className={cn(
-                        "w-8 md:w-16 h-0.5 mx-2 md:mx-4",
-                        currentStep > step.id ? "bg-primary" : "bg-muted"
-                      )}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-display font-bold">Create New Event</h1>
+            <p className="text-muted-foreground">Fill in the details to create your beautiful invitation</p>
           </div>
 
-          {/* Step Content */}
-          <div className="invitation-card p-6 md:p-8">
-            {/* Step 1: Event Type */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
-                    What are you celebrating?
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Choose the type of event you're creating an invitation for
-                  </p>
-                </div>
+          <div className="invitation-card p-6 md:p-8 space-y-8">
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {eventTypes.map((type) => {
-                    const Icon = type.icon;
-                    return (
-                      <button
-                        key={type.id}
-                        onClick={() => updateFormData("eventType", type.id)}
-                        className={cn(
-                          "p-4 md:p-6 rounded-xl border-2 transition-all text-center hover:border-primary/50 hover:bg-primary/5",
-                          formData.eventType === type.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border"
-                        )}
-                      >
-                        <div className="text-3xl md:text-4xl mb-2">{type.emoji}</div>
-                        <span className="text-sm md:text-base font-medium">
-                          {type.name}
-                        </span>
-                      </button>
-                    );
-                  })}
+            {/* Event Type */}
+            <section>
+              <Label className="text-lg font-semibold mb-4 block">Event Type *</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {eventTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => updateFormData("eventType", type.id)}
+                    className={cn(
+                      "p-3 rounded-lg border text-center transition-all hover:bg-muted",
+                      formData.eventType === type.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border"
+                    )}
+                  >
+                    <div className="text-2xl mb-1">{type.emoji}</div>
+                    <div className="text-sm font-medium">{type.name}</div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Divider */}
+            <div className="h-px bg-border/50" />
+
+            {/* Basic Info */}
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold">Basic Details</h2>
+
+              <div>
+                <Label htmlFor="eventName">Event Name *</Label>
+                <Input
+                  id="eventName"
+                  placeholder="e.g., Priya & Rahul's Wedding"
+                  value={formData.eventName}
+                  onChange={(e) => updateFormData("eventName", e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="hostNames">Host Name(s)</Label>
+                <Input
+                  id="hostNames"
+                  placeholder="e.g., Sharma & Gupta Family"
+                  value={formData.hostNames}
+                  onChange={(e) => updateFormData("hostNames", e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDate">Event Date *</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => updateFormData("startDate", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="startTime">Event Time</Label>
+                  <TimePicker
+                    id="startTime"
+                    value={formData.startTime}
+                    onChange={(value) => updateFormData("startTime", value)}
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Step 2: Basic Info */}
-            {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
-                    Tell us about your event
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Add the essential details for your invitation
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="eventName">Event Name *</Label>
-                    <Input
-                      id="eventName"
-                      placeholder="e.g., Priya & Rahul's Wedding"
-                      value={formData.eventName}
-                      onChange={(e) => updateFormData("eventName", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="hostNames">Host Name(s)</Label>
-                    <Input
-                      id="hostNames"
-                      placeholder="e.g., Sharma & Gupta Family"
-                      value={formData.hostNames}
-                      onChange={(e) => updateFormData("hostNames", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="startDate">Event Date *</Label>
-                      <Input
-                        id="startDate"
-                        type="date"
-                        value={formData.startDate}
-                        onChange={(e) => updateFormData("startDate", e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="startTime">Event Time</Label>
-                      <TimePicker
-                        id="startTime"
-                        value={formData.startTime}
-                        onChange={(value) => updateFormData("startTime", value)}
-                        className="mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Share a heartfelt message with your guests..."
-                      value={formData.description}
-                      onChange={(e) => updateFormData("description", e.target.value)}
-                      className="mt-1 min-h-[100px]"
-                    />
-                  </div>
-
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-lg font-semibold">Media Links</h3>
-
-                    <div>
-                      <Label htmlFor="youtubeLink">YouTube Video URL</Label>
-                      <Input
-                        id="youtubeLink"
-                        placeholder="e.g., https://youtu.be/..."
-                        value={formData.youtubeLink}
-                        onChange={(e) => updateFormData("youtubeLink", e.target.value)}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Add a video message, pre-wedding shoot, or event teaser.
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="instagramUrl">Instagram Post/Reel URL</Label>
-                      <Input
-                        id="instagramUrl"
-                        placeholder="e.g., https://www.instagram.com/reel/..."
-                        value={formData.instagramUrl}
-                        onChange={(e) => updateFormData("instagramUrl", e.target.value)}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Link to an Instagram post or reel to show on the invitation.
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="googlePhotosUrl">Google Photos Album</Label>
-                      <Input
-                        id="googlePhotosUrl"
-                        placeholder="e.g., https://photos.app.goo.gl/..."
-                        value={formData.googlePhotosUrl}
-                        onChange={(e) => updateFormData("googlePhotosUrl", e.target.value)}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Link to a shared Google Photos album for guests to view/upload.
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="googleDriveUrl">Google Drive Video</Label>
-                      <Input
-                        id="googleDriveUrl"
-                        placeholder="e.g., https://drive.google.com/file/..."
-                        value={formData.googleDriveUrl}
-                        onChange={(e) => updateFormData("googleDriveUrl", e.target.value)}
-                        className="mt-1"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Link to a video stored on Google Drive.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="description">Welcome Message / Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Share a heartfelt message with your guests..."
+                  value={formData.description}
+                  onChange={(e) => updateFormData("description", e.target.value)}
+                  className="min-h-[100px]"
+                />
               </div>
-            )}
+            </section>
 
-            {/* Step 3: Venue */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl md:text-3xl font-display font-bold mb-2">
-                    Where's the celebration?
-                  </h2>
-                  <p className="text-muted-foreground">
-                    Help your guests find their way to the venue
-                  </p>
-                </div>
+            <div className="h-px bg-border/50" />
 
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="venueName">Venue Name</Label>
-                    <Input
-                      id="venueName"
-                      placeholder="e.g., The Grand Palace"
-                      value={formData.venueName}
-                      onChange={(e) => updateFormData("venueName", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="venueAddress">Address</Label>
-                    <Textarea
-                      id="venueAddress"
-                      placeholder="Enter the full address"
-                      value={formData.venueAddress}
-                      onChange={(e) => updateFormData("venueAddress", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="parkingNotes">Parking Notes</Label>
-                    <Input
-                      id="parkingNotes"
-                      placeholder="e.g., Valet parking available"
-                      value={formData.parkingNotes}
-                      onChange={(e) => updateFormData("parkingNotes", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="dressCode">Dress Code</Label>
-                    <Input
-                      id="dressCode"
-                      placeholder="e.g., Traditional Indian, Semi-formal"
-                      value={formData.dressCode}
-                      onChange={(e) => updateFormData("dressCode", e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
+            {/* Venue */}
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold">Venue Details</h2>
+              <div>
+                <Label htmlFor="venueName">Venue Name</Label>
+                <Input
+                  id="venueName"
+                  placeholder="e.g., The Grand Palace"
+                  value={formData.venueName}
+                  onChange={(e) => updateFormData("venueName", e.target.value)}
+                />
               </div>
-            )}
+              <div>
+                <Label htmlFor="venueAddress">Address</Label>
+                <Textarea
+                  id="venueAddress"
+                  placeholder="Enter the full address"
+                  value={formData.venueAddress}
+                  onChange={(e) => updateFormData("venueAddress", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="dressCode">Dress Code</Label>
+                <Input
+                  id="dressCode"
+                  placeholder="e.g., Traditional"
+                  value={formData.dressCode}
+                  onChange={(e) => updateFormData("dressCode", e.target.value)}
+                />
+              </div>
+            </section>
 
-            {/* Navigation Buttons */}
-            <div className="flex justify-between mt-8 pt-6 border-t">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={currentStep === 1}
-                className="gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
+            <div className="h-px bg-border/50" />
 
-              {currentStep < steps.length ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={!canProceed()}
-                  className="gap-2"
-                >
-                  Next
-                  <ArrowRight className="h-4 w-4" />
+            {/* Sub Events */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Sub-Events</h2>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddSubEvent}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Function
                 </Button>
-              ) : (
-                <Button
-                  variant="gradient"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="gap-2"
-                >
-                  {isSubmitting ? "Creating..." : "Create Event"}
-                  <Sparkles className="h-4 w-4" />
-                </Button>
+              </div>
+
+              {subEvents.length === 0 && (
+                <p className="text-sm text-muted-foreground italic">No sub-events added (e.g. Haldi, Sangeet, Reception)</p>
               )}
+
+              {subEvents.map((event, index) => (
+                <div key={index} className="p-4 border rounded-lg bg-muted/20 space-y-3 relative">
+                  <button
+                    onClick={() => removeSubEvent(index)}
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label>Function Name</Label>
+                      <Input
+                        value={event.name}
+                        onChange={(e) => updateSubEvent(index, "name", e.target.value)}
+                        placeholder="e.g. Sangeet"
+                      />
+                    </div>
+                    <div>
+                      <Label>Location</Label>
+                      <Input
+                        value={event.location}
+                        onChange={(e) => updateSubEvent(index, "location", e.target.value)}
+                        placeholder="Venue Name"
+                      />
+                    </div>
+                    <div>
+                      <Label>Date</Label>
+                      <Input
+                        type="date"
+                        value={event.date}
+                        onChange={(e) => updateSubEvent(index, "date", e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label>Time</Label>
+                      <TimePicker
+                        value={event.time}
+                        onChange={(val) => updateSubEvent(index, "time", val)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            <div className="h-px bg-border/50" />
+
+            {/* Media & Links */}
+            <section className="space-y-4">
+              <h2 className="text-lg font-semibold">Media & Links</h2>
+
+              <div className="space-y-4">
+                {/* Cover Photo */}
+                <div>
+                  <Label className="block mb-2">Cover Photo</Label>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="relative overflow-hidden"
+                    >
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) setCoverFile(e.target.files[0]);
+                        }}
+                      />
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      {coverFile ? "Change Photo" : "Upload Photo"}
+                    </Button>
+                    {coverFile && <span className="text-sm text-green-600 truncate max-w-[200px]">{coverFile.name}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Displayed at the top of your invitation.</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="youtubeLink">YouTube Video URL</Label>
+                  <Input
+                    id="youtubeLink"
+                    placeholder="https://youtu.be/..."
+                    value={formData.youtubeLink}
+                    onChange={(e) => updateFormData("youtubeLink", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="googlePhotosUrl">Google Photos Album</Label>
+                  <Input
+                    id="googlePhotosUrl"
+                    placeholder="https://photos.app.goo.gl/..."
+                    value={formData.googlePhotosUrl}
+                    onChange={(e) => updateFormData("googlePhotosUrl", e.target.value)}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Social Links */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Social Account Links (Max 5)</h2>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddSocialLink}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Link
+                </Button>
+              </div>
+
+              {socialLinks.map((link, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="w-1/3">
+                    <Label>Platform</Label>
+                    <Input
+                      value={link.platform}
+                      onChange={(e) => updateSocialLink(index, "platform", e.target.value)}
+                      placeholder="e.g. Instagram"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label>URL</Label>
+                    <Input
+                      value={link.url}
+                      onChange={(e) => updateSocialLink(index, "url", e.target.value)}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeSocialLink(index)} className="text-destructive">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </section>
+
+            <div className="pt-6">
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-full h-12 text-lg font-semibold bg-primary hover:bg-primary/90 text-white"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Event...
+                  </>
+                ) : (
+                  "Create & Publish Invitation"
+                )}
+              </Button>
             </div>
+
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );
