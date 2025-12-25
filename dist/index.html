@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dewana Events</title>
+  <meta name="description" content="Manage your events seamlessly with Dewana." />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" type="image/png" href="/dewana-logo.png" />
+  <link rel="apple-touch-icon" href="/dewana-logo.png" />
+
+  <meta property="og:title" content="Dewana Events" />
+  <meta property="og:description" content="Manage your events seamlessly with Dewana." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/dewana-logo.png" />
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Dewana Events" />
+  <meta name="twitter:description" content="Manage your events seamlessly with Dewana." />
+  <meta name="twitter:image" content="/dewana-logo.png" />
+  <script type="module" crossorigin src="/assets/index-CfYB2Tts.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BHjxzdp1.css">
+<link rel="manifest" href="/manifest.webmanifest"></head>
+
+<body>
+  <div id="root"></div>
+  <script>
+    window.deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      window.deferredPrompt = e;
+      console.log('Global beforeinstallprompt captured!', e);
+    });
+  </script>
+</body>
+
+</html>
