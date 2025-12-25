@@ -1,11 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { 
-  Sparkles, 
-  QrCode, 
-  Users, 
+import { useAuth } from "@/hooks/useAuth";
+import {
+  Sparkles,
+  QrCode,
+  Users,
   Calendar,
   MapPin,
   Share2,
@@ -57,17 +59,26 @@ const eventTypes = [
 ];
 
 export default function Index() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       {/* Hero Section */}
       <section className="relative pt-24 pb-20 md:pt-32 md:pb-28 overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 pattern-paisley opacity-50" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-primary/20 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-secondary/20 to-transparent rounded-full blur-3xl" />
-        
+
         <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto text-center">
             {/* Social Proof Badge */}
@@ -77,18 +88,18 @@ export default function Index() {
                 10,000+ events created this month
               </span>
             </div>
-            
+
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold mb-6 animate-fade-in-up">
               Create Beautiful
               <span className="block text-gradient-primary">Digital Invitations</span>
             </h1>
-            
+
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 font-body animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               Where <span className="text-primary font-semibold">Technology</span> meets{" "}
-              <span className="text-secondary font-semibold">Tradition</span>. 
+              <span className="text-secondary font-semibold">Tradition</span>.
               Craft stunning event invitations with RSVP tracking, QR codes, and more — completely free.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
               <Link to="/auth?mode=signup">
                 <Button variant="hero" size="xl" className="w-full sm:w-auto group">
@@ -103,7 +114,7 @@ export default function Index() {
               </Link>
             </div>
           </div>
-          
+
           {/* Event Type Cards */}
           <div className="mt-16 md:mt-24">
             <p className="text-center text-sm font-heading text-muted-foreground mb-6">
@@ -111,7 +122,7 @@ export default function Index() {
             </p>
             <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-3xl mx-auto">
               {eventTypes.map((event, index) => (
-                <div 
+                <div
                   key={event.name}
                   className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border/50 shadow-soft card-hover animate-fade-in"
                   style={{ animationDelay: `${0.3 + index * 0.05}s` }}
@@ -124,7 +135,7 @@ export default function Index() {
           </div>
         </div>
       </section>
-      
+
       {/* Features Section */}
       <section id="features" className="py-20 bg-card/50">
         <div className="container mx-auto px-4">
@@ -137,10 +148,10 @@ export default function Index() {
               Create, share, and manage your event invitations with powerful features designed for Indian celebrations.
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {features.map((feature, index) => (
-              <div 
+              <div
                 key={feature.title}
                 className="invitation-card p-6 card-hover animate-fade-in-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
@@ -155,7 +166,7 @@ export default function Index() {
           </div>
         </div>
       </section>
-      
+
       {/* How It Works Section */}
       <section className="py-20 pattern-mandala">
         <div className="container mx-auto px-4">
@@ -165,14 +176,14 @@ export default function Index() {
               <span className="text-gradient-gold"> 3 Simple Steps</span>
             </h2>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             {[
               { step: "01", title: "Choose Your Event", desc: "Select from weddings, birthdays, festivals & more" },
               { step: "02", title: "Customize Details", desc: "Add venue, sub-events, and beautiful designs" },
               { step: "03", title: "Share & Track", desc: "Send via WhatsApp or QR code, track RSVPs live" },
             ].map((item, index) => (
-              <div 
+              <div
                 key={item.step}
                 className="text-center animate-fade-in-up"
                 style={{ animationDelay: `${index * 0.15}s` }}
@@ -187,7 +198,7 @@ export default function Index() {
           </div>
         </div>
       </section>
-      
+
       {/* CTA Section */}
       <section className="py-20 relative overflow-hidden">
         <div className="absolute inset-0 gradient-primary opacity-5" />
@@ -200,7 +211,7 @@ export default function Index() {
             <p className="text-muted-foreground mb-8">
               Join thousands of families who've made their celebrations memorable with Dewana.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/auth?mode=signup">
                 <Button variant="hero" size="xl" className="group">
@@ -209,7 +220,7 @@ export default function Index() {
                 </Button>
               </Link>
             </div>
-            
+
             <div className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-muted-foreground">
               {["No payment required", "Unlimited invitations", "Beautiful templates"].map((item) => (
                 <div key={item} className="flex items-center gap-2">
@@ -221,7 +232,7 @@ export default function Index() {
           </div>
         </div>
       </section>
-      
+
       <Footer />
     </div>
   );

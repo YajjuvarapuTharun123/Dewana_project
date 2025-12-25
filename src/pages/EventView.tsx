@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import QRCode from "qrcode";
 import { generateQRCodeWithLogo } from "@/lib/qr-code-utils";
 import { getYouTubeEmbedUrl } from "@/lib/video-utils";
@@ -51,6 +52,8 @@ interface Event {
   view_count?: number;
   youtube_link?: string | null;
   custom_social_links?: any | null;
+  google_photos_url?: string | null;
+  google_drive_url?: string | null;
 }
 
 interface RSVPForm {
@@ -64,6 +67,7 @@ interface RSVPForm {
 
 export default function EventView() {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
@@ -72,6 +76,7 @@ export default function EventView() {
   const [showGuestQR, setShowGuestQR] = useState(false);
   const [guestQRCode, setGuestQRCode] = useState<string>("");
   const [guestRSVPId, setGuestRSVPId] = useState<string>("");
+  const [existingRSVP, setExistingRSVP] = useState<any>(null);
   const [rsvpForm, setRsvpForm] = useState<RSVPForm>({
     guest_name: "",
     guest_email: "",
@@ -86,6 +91,52 @@ export default function EventView() {
       fetchEvent();
     }
   }, [slug]);
+
+  useEffect(() => {
+    if (user) {
+      setRsvpForm(prev => ({
+        ...prev,
+        guest_name: user.user_metadata?.name || user.user_metadata?.full_name || prev.guest_name,
+        guest_email: user.email || prev.guest_email
+      }));
+
+      // Check for existing RSVP
+      if (event) {
+        checkExistingRSVP();
+      }
+    }
+  }, [user, event]);
+
+  const checkExistingRSVP = async () => {
+    if (!user?.email || !event?.id) return;
+
+    const { data, error } = await supabase
+      .from("rsvps")
+      .select("*")
+      .eq("event_id", event.id)
+      .ilike("guest_email", user.email!)
+      .order("submitted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error checking RSVP:", error);
+    }
+
+    if (data) {
+      console.log("Found existing RSVP:", data);
+      setExistingRSVP(data);
+      if (data.status === "yes") {
+        const qrData = JSON.stringify({ rsvpId: data.id });
+        generateQRCodeWithLogo(qrData, {
+          size: 400,
+          logoSize: 80,
+          margin: 2,
+        }).then(url => setGuestQRCode(url));
+        setGuestRSVPId(data.id);
+      }
+    }
+  };
 
   const fetchEvent = async () => {
     const { data, error } = await supabase
@@ -119,13 +170,23 @@ export default function EventView() {
     });
 
     // Increment view count
-    await supabase.rpc("increment_view_count", { event_id: eventId }).catch(() => {
+    try {
+      await supabase.rpc("increment_view_count", { event_id: eventId });
+    } catch (error) {
       // Fallback if RPC doesn't exist - direct update
-      supabase
+      const { data: currentEvent } = await supabase
         .from("events")
-        .update({ view_count: (event?.view_count || 0) + 1 })
-        .eq("id", eventId);
-    });
+        .select("view_count")
+        .eq("id", eventId)
+        .single();
+
+      if (currentEvent) {
+        await supabase
+          .from("events")
+          .update({ view_count: (currentEvent.view_count || 0) + 1 })
+          .eq("id", eventId);
+      }
+    }
   };
 
   const handleRSVPSubmit = async (e: React.FormEvent) => {
@@ -145,11 +206,11 @@ export default function EventView() {
     }
 
     try {
-      // Use RPC function to bypass RLS restrictions for anonymous inserts
+      // Use RPC function to bypass RLS restrictions
       const { data, error } = await supabase.rpc("create_guest_rsvp", {
         p_event_id: event.id,
         p_guest_name: rsvpForm.guest_name,
-        p_guest_email: rsvpForm.guest_email || null,
+        p_guest_email: rsvpForm.guest_email.toLowerCase(),
         p_guest_phone: rsvpForm.guest_phone || null,
         p_status: rsvpForm.status,
         p_num_guests: rsvpForm.num_guests,
@@ -300,7 +361,14 @@ export default function EventView() {
                   <div className="flex items-start gap-3">
                     <MapPin className="h-5 w-5 text-primary mt-1" />
                     <div>
-                      <p className="font-medium">{event.venue_name}</p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((event.venue_name || "") + " " + (event.venue_address || ""))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium hover:underline hover:text-primary transition-colors"
+                      >
+                        {event.venue_name}
+                      </a>
                       {event.venue_address && (
                         <p className="text-muted-foreground">{event.venue_address}</p>
                       )}
@@ -343,6 +411,59 @@ export default function EventView() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Google Photos Link */}
+                {event.google_photos_url && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="white" /><path d="M16.5 12C16.5 14.4853 14.4853 16.5 12 16.5C9.51472 16.5 7.5 14.4853 7.5 12C7.5 9.51472 9.51472 7.5 12 7.5C14.4853 7.5 16.5 9.51472 16.5 12Z" fill="#F4B400" /><path d="M12 2C17.5228 2 22 6.47715 22 12H12V2Z" fill="#db4437" /><path d="M22 12C22 17.5228 17.5228 22 12 22V12H22Z" fill="#ffcd40" /><path d="M12 22C6.47715 22 2 17.5228 2 12V22H12Z" fill="#0f9d58" /><path d="M2 12C2 6.47715 6.47715 2 12 2V12H2Z" fill="#4285f4" /></svg>
+                      Google Photos
+                    </h3>
+                    <a
+                      href={event.google_photos_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block group"
+                    >
+                      <div className="bg-gradient-to-br from-blue-50 to-yellow-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 h-full min-h-[200px] transition-all group-hover:shadow-md">
+                        <div className="bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                          <svg viewBox="0 0 24 24" className="w-8 h-8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19.14 7.5A4.49 4.49 0 0016 6.14V7.5h3.14zM16 11.36V7.5h-3.86c.41 1.73 1.94 3.06 3.86 3.86zM11.36 16H7.5v3.86a4.49 4.49 0 003.86-3.86zM7.5 12.64V16.5h3.86c-.41-1.73-1.94-3.06-3.86-3.86zM12.64 8H16.5V4.14a4.49 4.49 0 00-3.86 3.86zM16.5 12.64H19.14a4.49 4.49 0 00-2.64-3.86v3.86zM8 11.36a4.49 4.49 0 002.64-3.86H8v3.86zM11.36 12.64H8v3.13c1.72-.41 3.06-1.94 3.36-3.13z" fill="#F4B400" /><path d="M12.64 8H16.5V4.14a4.49 4.49 0 00-3.86 3.86z" fill="#db4437" /><path d="M16 11.36V7.5h-3.86c.41 1.73 1.94 3.06 3.86 3.86z" fill="#4285f4" /><path d="M11.36 12.64H8v3.13c1.72-.41 3.06-1.94 3.36-3.13z" fill="#0f9d58" /></svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-lg group-hover:text-primary transition-colors">View Photo Album</p>
+                          <p className="text-sm text-muted-foreground">See all photos from the event</p>
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                )}
+
+                {/* Google Drive Video Link */}
+                {event.google_drive_url && (
+                  <div className="space-y-2">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <svg viewBox="0 0 87.3 78" className="w-5 h-5" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#ea4335" /><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#fbbc04" /><path d="m43.65 25 13.75 23.8-13.75 23.8h13.75c1.55 0 3.1-.4 4.5-1.2l13.75-23.8c.8-1.35 1.2-2.9 1.2-4.5s-.4-3.15-1.2-4.5l-25.4-44c-1.35-.8-2.9-1.2-4.5-1.2h-13.75z" fill="#4285f4" /><path d="m43.65 25h27.5c0-1.55-.4-3.1-1.2-4.5l-13.75-23.8c-.8-1.4-1.95-2.5-3.3-3.3h-27.5z" fill="#34a853" /></svg>
+                      Google Drive Video
+                    </h3>
+                    <a
+                      href={event.google_drive_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block group"
+                    >
+                      <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-6 border flex flex-col items-center justify-center text-center gap-4 h-full min-h-[200px] transition-all group-hover:shadow-md">
+                        <div className="bg-white p-3 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                          <svg viewBox="0 0 87.3 78" className="w-8 h-8" xmlns="http://www.w3.org/2000/svg"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#ea4335" /><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#fbbc04" /><path d="m43.65 25 13.75 23.8-13.75 23.8h13.75c1.55 0 3.1-.4 4.5-1.2l13.75-23.8c.8-1.35 1.2-2.9 1.2-4.5s-.4-3.15-1.2-4.5l-25.4-44c-1.35-.8-2.9-1.2-4.5-1.2h-13.75z" fill="#4285f4" /><path d="m43.65 25h27.5c0-1.55-.4-3.1-1.2-4.5l-13.75-23.8c-.8-1.4-1.95-2.5-3.3-3.3h-27.5z" fill="#34a853" /></svg>
+                        </div>
+                        <div>
+                          <p className="font-medium text-lg group-hover:text-primary transition-colors">Watch Video</p>
+                          <p className="text-sm text-muted-foreground">View video on Google Drive</p>
+                        </div>
+                      </div>
+                    </a>
+                  </div>
+                )}
+
+
                 {/* YouTube Embed */}
                 {event.youtube_link && getYouTubeEmbedUrl(event.youtube_link) && (
                   <div className="space-y-2">
@@ -393,7 +514,32 @@ export default function EventView() {
           )}
 
           {/* RSVP Form */}
-          {event.rsvp_enabled && (
+          {existingRSVP ? (
+            <div className="invitation-card p-8 text-center bg-primary/5 border-primary/20">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <PartyPopper className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-display font-bold mb-2">You're on the list!</h2>
+              <p className="text-muted-foreground mb-6">
+                You have RSVP'd <strong>{existingRSVP.status.toUpperCase()}</strong> with {existingRSVP.num_guests} guests.
+              </p>
+
+              {existingRSVP.status === "yes" && (
+                <div className="flex flex-col items-center gap-4">
+                  {guestQRCode && (
+                    <img
+                      src={guestQRCode}
+                      alt="Entry Ticket"
+                      className="w-48 h-48 border rounded-lg shadow-sm"
+                    />
+                  )}
+                  <Button onClick={() => setShowGuestQR(true)} variant="outline">
+                    View Full Ticket
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : event.rsvp_enabled && (
             <div className="invitation-card p-6 md:p-8">
               <div className="flex items-center gap-2 mb-6">
                 <Heart className="h-6 w-6 text-primary" />

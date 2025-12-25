@@ -16,13 +16,16 @@ import {
     Calendar,
     Save,
     LogOut,
+    Bell,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 export default function Profile() {
     const { user, loading: authLoading, signOut } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
     const [saving, setSaving] = useState(false);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -177,6 +180,31 @@ export default function Profile() {
                                     Member Since
                                 </Label>
                                 <p className="text-foreground font-medium">{joinDate}</p>
+                            </div>
+
+                            <div className="pt-4 border-t">
+                                <h3 className="text-lg font-heading font-semibold mb-4 flex items-center gap-2">
+                                    <Bell className="h-5 w-5" />
+                                    Notification Settings
+                                </h3>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-0.5">
+                                        <Label className="text-base">Push Notifications</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Receive reminders for upcoming events
+                                        </p>
+                                    </div>
+                                    <Switch
+                                        checked={notificationsEnabled}
+                                        onCheckedChange={(checked) => {
+                                            setNotificationsEnabled(checked);
+                                            toast({
+                                                title: checked ? "Notifications Enabled" : "Notifications Disabled",
+                                                description: checked ? "You will receive reminders for your events." : "You will not receive reminders.",
+                                            });
+                                        }}
+                                    />
+                                </div>
                             </div>
 
                             {/* Actions */}

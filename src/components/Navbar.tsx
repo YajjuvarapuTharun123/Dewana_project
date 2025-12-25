@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+import { BottomNav } from "@/components/BottomNav";
+
 export function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -21,10 +23,7 @@ export function Navbar() {
 
   const handleInstallClick = async () => {
     if (isIOS) {
-      // Logic to show iOS instructions (can be a toast or dialog, 
-      // but for now we will rely on the Banner showing it, or just a toast)
-      // The PWAInstallBanner handles the UI for instructions best.
-      // Here we might want to just scroll to bottom or show a helper.
+      // Logic to show iOS instructions
     }
     await showInstallPrompt();
   };
@@ -40,129 +39,121 @@ export function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center">
-            <Logo />
-          </Link>
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <Link to="/" className="flex items-center">
+              <Logo />
+            </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-6">
-            {(deferredPrompt || isIOS) && (
-              <Button variant="outline" size="sm" className="gap-2 hidden md:flex" onClick={handleInstallClick}>
-                <Download className="h-4 w-4" />
-                Install App
-              </Button>
-            )}
-
-            {user ? (
-              <>
-                <Link to="/dashboard">
-                  <Button variant="ghost" className="gap-2">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                      <Avatar className="h-10 w-10 border-2 border-primary/20">
-                        <AvatarImage src={user.user_metadata?.avatar_url} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-heading">
-                          {getInitials(user.user_metadata?.name || user.email)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
-                      <User className="mr-2 h-4 w-4" />
-                      My Profile
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt && !isIOS}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Install App
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <>
-                <Link to="/auth">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link to="/auth?mode=signup">
-                  <Button variant="gradient">Create Free Invite</Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
-            {(deferredPrompt || isIOS) && (
-              <div className="px-2 pb-2">
-                <Button variant="outline" className="w-full gap-2" onClick={handleInstallClick}>
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-6">
+              {(deferredPrompt || isIOS) && (
+                <Button variant="outline" size="sm" className="gap-2 hidden md:flex" onClick={handleInstallClick}>
                   <Download className="h-4 w-4" />
                   Install App
                 </Button>
-              </div>
-            )}
-            {user ? (
-              <div className="space-y-2">
-                <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start gap-2">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-                <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start gap-2">
-                    <User className="h-4 w-4" />
-                    My Profile
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-2 text-destructive"
-                  onClick={handleSignOut}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full">Sign In</Button>
-                </Link>
-                <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="gradient" className="w-full">Create Free Invite</Button>
-                </Link>
-              </div>
-            )}
+              )}
+
+              {user ? (
+                <>
+                  <Link to="/dashboard">
+                    <Button variant="ghost" className="gap-2">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Button>
+                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                        <Avatar className="h-10 w-10 border-2 border-primary/20">
+                          <AvatarImage src={user.user_metadata?.avatar_url} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-heading">
+                            {getInitials(user.user_metadata?.name || user.email)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        Dashboard
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/profile')}>
+                        <User className="mr-2 h-4 w-4" />
+                        My Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt && !isIOS}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Install App
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              ) : (
+                <>
+                  <Link to="/auth">
+                    <Button variant="ghost">Sign In</Button>
+                  </Link>
+                  <Link to="/auth?mode=signup">
+                    <Button variant="gradient">Create Free Invite</Button>
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Menu Button - OPTIONAL now with BottomNav, but keeping for Profile/Settings/Logout */}
+            <button
+              className="md:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
           </div>
-        )}
-      </div>
-    </nav>
+
+          {/* Mobile Menu Overlay */}
+          {mobileMenuOpen && (
+            <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
+              {(deferredPrompt || isIOS) && (
+                <div className="px-2 pb-2">
+                  <Button variant="outline" className="w-full gap-2" onClick={handleInstallClick}>
+                    <Download className="h-4 w-4" />
+                    Install App
+                  </Button>
+                </div>
+              )}
+              {user ? (
+                <div className="space-y-2">
+                  {/* Items are now in BottomNav, but Logout is important here */}
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2 text-destructive"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full">Sign In</Button>
+                  </Link>
+                  <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="gradient" className="w-full">Create Free Invite</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </nav>
+      {user && <BottomNav />}
+    </>
   );
 }

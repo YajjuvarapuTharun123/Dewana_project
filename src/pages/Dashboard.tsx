@@ -77,7 +77,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
+  const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
+  const [activeTab, setActiveTab] = useState<"hosting" | "attending">("hosting");
 
   // Dialog states
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -104,17 +106,79 @@ export default function Dashboard() {
   const fetchEvents = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    // Fetch hosted events
+    const { data: hostedData, error: hostedError } = await supabase
       .from("events")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setEvents(data);
+    if (!hostedError && hostedData) {
+      setEvents(hostedData);
     }
+
+    // Fetch attending events
+    // 1. Get RSVPs with user's email
+    if (user.email) {
+      const { data: rsvpData, error: rsvpError } = await supabase
+        .from("rsvps")
+        .select("event_id, guest_email")
+        .ilike("guest_email", user.email);
+
+      if (!rsvpError && rsvpData && rsvpData.length > 0) {
+        const eventIds = rsvpData.map(r => r.event_id);
+
+        // 2. Fetch events details
+        const { data: attendingData, error: attendingError } = await supabase
+          .from("events")
+          .select("*")
+          .in("id", eventIds)
+          .order("start_date", { ascending: true });
+
+        console.log("Attending Events Fetch Result:", { attendingData, attendingError });
+
+        if (!attendingError && attendingData) {
+          setAttendingEvents(attendingData);
+          console.log("Setting attending events:", attendingData);
+
+          // UX Improvement: Auto-switch to Attending tab if user has no hosted events
+          if ((!hostedData || hostedData.length === 0) && attendingData.length > 0) {
+            console.log("Auto-switching to Attending tab");
+            setActiveTab("attending");
+          }
+        } else {
+          console.error("Error fetching attending events:", attendingError);
+        }
+      } else {
+        console.log("No RSVPs found for this user.");
+      }
+    }
+
     setLoadingEvents(false);
   };
+
+  // Check for events happening today
+  useEffect(() => {
+    if (!loadingEvents && attendingEvents.length > 0) {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+
+      const todaysEvents = attendingEvents.filter(event => {
+        const eventDate = new Date(event.start_date).toISOString().split('T')[0];
+        return eventDate === todayStr;
+      });
+
+      if (todaysEvents.length > 0) {
+        todaysEvents.forEach(event => {
+          toast({
+            title: `🎉 It's ${event.event_name} Today!`,
+            description: "Don't forget to attend! Check your QR code.",
+            duration: 10000,
+          });
+        });
+      }
+    }
+  }, [loadingEvents, attendingEvents, toast]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -302,7 +366,7 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          ) : events.length === 0 ? (
+          ) : events.length === 0 && attendingEvents.length === 0 ? (
             <div className="invitation-card p-12 text-center max-w-lg mx-auto">
               <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center mx-auto mb-6">
                 <Sparkles className="h-8 w-8 text-primary-foreground" />
@@ -316,104 +380,186 @@ export default function Dashboard() {
               <Link to="/create-event">
                 <Button variant="gradient" size="lg" className="gap-2">
                   <Plus className="h-5 w-5" />
-                  Create Your First Invite
                 </Button>
               </Link>
             </div>
           ) : (
             <>
-              <h2 className="text-xl font-heading font-semibold mb-4">Your Events</h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
-                  <div key={event.id} className="invitation-card overflow-hidden card-hover group">
-                    {/* Cover Image */}
-                    <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden">
-                      {event.cover_image_url ? (
-                        <img
-                          src={event.cover_image_url}
-                          alt={event.event_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-5xl">{getEventTypeEmoji(event.event_type)}</span>
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3">
-                        <Badge className={getStatusColor(event.status)}>
-                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-5">
-                      <h3 className="font-heading font-semibold text-lg mb-1 line-clamp-1">
-                        {event.event_name}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                        <Calendar className="h-4 w-4" />
-                        {formatDate(event.start_date)}
-                      </div>
-
-                      {/* Stats */}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-4 w-4" />
-                          {event.view_count}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-                          <Button variant="outline" size="sm" className="w-full">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                        </a>
-                        <Link to={`/edit-event/${event.id}`} state={{ event }}>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleQRCode(event)}>
-                              <QrCodeIcon className="h-4 w-4 mr-2" />
-                              Event Invite
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleShare(event)}>
-                              <Share2 className="h-4 w-4 mr-2" />
-                              Share
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleViewRSVPs(event)}>
-                              <Users className="h-4 w-4 mr-2" />
-                              RSVPs
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => navigate(`/checkin/${event.id}`)}>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Check-in Guests
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(event)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Event
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              {/* Dashboard Tabs */}
+              <div className="flex items-center gap-4 mb-6 border-b">
+                <button
+                  onClick={() => setActiveTab("hosting")}
+                  className={`pb-2 px-1 text-sm font-medium transition-colors border-b-2 ${activeTab === "hosting"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                  Hosting ({events.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab("attending")}
+                  className={`pb-2 px-1 text-sm font-medium transition-colors border-b-2 ${activeTab === "attending"
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                  Attending ({attendingEvents.length})
+                </button>
               </div>
+
+
+
+              {activeTab === "hosting" ? (
+                /* Hosting Grid */
+                events.length === 0 ? (
+                  <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
+                    <p className="text-muted-foreground" > You haven't created any events yet.</p>
+                    <Link to="/create-event" className="mt-4 inline-block">
+                      <Button variant="outline" size="sm">Create Event</Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {events.map((event) => (
+                      <div key={event.id} className="invitation-card overflow-hidden card-hover group">
+                        {/* Cover Image */}
+                        <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden">
+                          {event.cover_image_url ? (
+                            <img
+                              src={event.cover_image_url}
+                              alt={event.event_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-5xl">{getEventTypeEmoji(event.event_type)}</span>
+                            </div>
+                          )}
+                          <div className="absolute top-3 right-3">
+                            <Badge className={getStatusColor(event.status)}>
+                              {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-5">
+                          <h3 className="font-heading font-semibold text-lg mb-1 line-clamp-1">
+                            {event.event_name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(event.start_date)}
+                          </div>
+
+                          {/* Stats */}
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-4 w-4" />
+                              {event.view_count}
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2">
+                            <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="flex-1">
+                              <Button variant="outline" size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            </a>
+                            <Link to={`/edit-event/${event.id}`} state={{ event }}>
+                              <Button variant="ghost" size="sm">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleQRCode(event)}>
+                                  <QrCodeIcon className="h-4 w-4 mr-2" />
+                                  Event Invite
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleShare(event)}>
+                                  <Share2 className="h-4 w-4 mr-2" />
+                                  Share
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleViewRSVPs(event)}>
+                                  <Users className="h-4 w-4 mr-2" />
+                                  RSVPs
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => navigate(`/checkin/${event.id}`)}>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Check-in Guests
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(event)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Event
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                /* Attending Grid */
+                attendingEvents.length === 0 ? (
+                  <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
+                    <p className="text-muted-foreground">You haven't RSVP'd to any events yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {attendingEvents.map((event) => (
+                      <div key={event.id} className="invitation-card overflow-hidden card-hover group">
+                        {/* Cover Image */}
+                        <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden">
+                          {event.cover_image_url ? (
+                            <img
+                              src={event.cover_image_url}
+                              alt={event.event_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-5xl">{getEventTypeEmoji(event.event_type)}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-5">
+                          <h3 className="font-heading font-semibold text-lg mb-1 line-clamp-1">
+                            {event.event_name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(event.start_date)}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="w-full">
+                              <Button variant="default" size="sm" className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90">
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Event
+                              </Button>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
             </>
           )}
         </div>

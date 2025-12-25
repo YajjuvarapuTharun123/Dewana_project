@@ -61,6 +61,8 @@ export default function CreateEvent() {
     dressCode: "",
     youtubeLink: "",
     instagramUrl: "",
+    googlePhotosUrl: "",
+    googleDriveUrl: "",
   });
 
   // Redirect if not logged in
@@ -132,6 +134,8 @@ export default function CreateEvent() {
           dress_code: formData.dressCode || null,
           youtube_link: formData.youtubeLink || null,
           custom_social_links: formData.instagramUrl ? { instagram_url: formData.instagramUrl } : null,
+          google_photos_url: formData.googlePhotosUrl || null,
+          google_drive_url: formData.googleDriveUrl || null,
           status: "draft",
         })
         .select()
@@ -347,6 +351,34 @@ export default function CreateEvent() {
                       />
                       <p className="text-xs text-muted-foreground mt-1">
                         Link to an Instagram post or reel to show on the invitation.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="googlePhotosUrl">Google Photos Album</Label>
+                      <Input
+                        id="googlePhotosUrl"
+                        placeholder="e.g., https://photos.app.goo.gl/..."
+                        value={formData.googlePhotosUrl}
+                        onChange={(e) => updateFormData("googlePhotosUrl", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Link to a shared Google Photos album for guests to view/upload.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="googleDriveUrl">Google Drive Video</Label>
+                      <Input
+                        id="googleDriveUrl"
+                        placeholder="e.g., https://drive.google.com/file/..."
+                        value={formData.googleDriveUrl}
+                        onChange={(e) => updateFormData("googleDriveUrl", e.target.value)}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Link to a video stored on Google Drive.
                       </p>
                     </div>
                   </div>

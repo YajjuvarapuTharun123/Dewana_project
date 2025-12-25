@@ -79,6 +79,8 @@ export default function EditEvent() {
         dressCode: "",
         youtubeLink: "",
         instagramUrl: "",
+        googlePhotosUrl: "",
+        googleDriveUrl: "",
         status: "draft",
     });
 
@@ -115,8 +117,11 @@ export default function EditEvent() {
                     venueAddress: data.venue_address || "",
                     parkingNotes: data.parking_notes || "",
                     dressCode: data.dress_code || "",
+                    dressCode: data.dress_code || "",
                     youtubeLink: data.youtube_link || "",
                     instagramUrl: instagramUrl,
+                    googlePhotosUrl: data.google_photos_url || "",
+                    googleDriveUrl: data.google_drive_url || "",
                     status: data.status || "draft",
                 });
                 setLoading(false);
@@ -173,8 +178,11 @@ export default function EditEvent() {
                 venueAddress: data.venue_address || "",
                 parkingNotes: data.parking_notes || "",
                 dressCode: data.dress_code || "",
+                dressCode: data.dress_code || "",
                 youtubeLink: data.youtube_link || "",
                 instagramUrl: instagramUrl,
+                googlePhotosUrl: data.google_photos_url || "",
+                googleDriveUrl: data.google_drive_url || "",
                 status: data.status || "draft",
             });
         } catch (error: any) {
@@ -242,7 +250,10 @@ export default function EditEvent() {
                     parking_notes: formData.parkingNotes || null,
                     dress_code: formData.dressCode || null,
                     youtube_link: formData.youtubeLink || null,
+                    youtube_link: formData.youtubeLink || null,
                     custom_social_links: formData.instagramUrl ? { instagram_url: formData.instagramUrl } : null,
+                    google_photos_url: formData.googlePhotosUrl || null,
+                    google_drive_url: formData.googleDriveUrl || null,
                     status: formData.status,
                 })
                 .eq("id", id)
@@ -510,6 +521,34 @@ export default function EditEvent() {
                                             />
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Link to an Instagram post or reel to show on the invitation.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="googlePhotosUrl">Google Photos Album</Label>
+                                            <Input
+                                                id="googlePhotosUrl"
+                                                placeholder="e.g., https://photos.app.goo.gl/..."
+                                                value={formData.googlePhotosUrl}
+                                                onChange={(e) => updateFormData("googlePhotosUrl", e.target.value)}
+                                                className="mt-1"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Link to a shared Google Photos album for guests to view/upload.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <Label htmlFor="googleDriveUrl">Google Drive Video</Label>
+                                            <Input
+                                                id="googleDriveUrl"
+                                                placeholder="e.g., https://drive.google.com/file/..."
+                                                value={formData.googleDriveUrl}
+                                                onChange={(e) => updateFormData("googleDriveUrl", e.target.value)}
+                                                className="mt-1"
+                                            />
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Link to a video stored on Google Drive.
                                             </p>
                                         </div>
                                     </div>
