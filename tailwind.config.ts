@@ -81,6 +81,12 @@ export default {
         soft: "var(--shadow-soft)",
         card: "var(--shadow-card)",
         glow: "var(--shadow-glow)",
+        'modern': '0 10px 40px -10px rgba(0, 0, 0, 0.15)',
+        'modern-lg': '0 20px 60px -15px rgba(0, 0, 0, 0.25)',
+        'inner-glow': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.1)',
+      },
+      backdropBlur: {
+        xs: '2px',
       },
       keyframes: {
         "accordion-down": {
@@ -119,6 +125,14 @@ export default {
           "0%, 100%": { boxShadow: "0 0 20px hsla(18, 100%, 60%, 0.3)" },
           "50%": { boxShadow: "0 0 40px hsla(18, 100%, 60%, 0.5)" },
         },
+        "bounce-subtle": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5px)" },
+        },
+        "slide-up": {
+          "0%": { transform: "translateY(100%)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -130,6 +144,8 @@ export default {
         "float": "float 3s ease-in-out infinite",
         "shimmer": "shimmer 2s linear infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "bounce-subtle": "bounce-subtle 1s ease-in-out infinite",
+        "slide-up": "slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },
