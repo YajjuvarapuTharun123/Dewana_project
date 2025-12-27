@@ -40,17 +40,17 @@ export function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
+      <nav className="fixed top-0 left-0 right-0 z-50 glass-nav shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className="flex items-center transition-transform hover:scale-105">
               <Logo />
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
               {(deferredPrompt || isIOS) && (
-                <Button variant="outline" size="sm" className="gap-2 hidden md:flex" onClick={handleInstallClick}>
+                <Button variant="outline" size="sm" className="gap-2 hidden md:flex btn-press" onClick={handleInstallClick}>
                   <Download className="h-4 w-4" />
                   Install App
                 </Button>
@@ -59,36 +59,36 @@ export function Navbar() {
               {user ? (
                 <>
                   <Link to="/dashboard">
-                    <Button variant="ghost" className="gap-2">
+                    <Button variant="ghost" className="gap-2 btn-press">
                       <LayoutDashboard className="h-4 w-4" />
                       Dashboard
                     </Button>
                   </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                        <Avatar className="h-10 w-10 border-2 border-primary/20">
+                      <Button variant="ghost" className="relative h-10 w-10 rounded-full btn-press group">
+                        <Avatar className="h-10 w-10 gradient-border transition-all group-hover:scale-110">
                           <AvatarImage src={user.user_metadata?.avatar_url} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-heading">
+                          <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-primary font-heading font-semibold">
                             {getInitials(user.user_metadata?.name || user.email)}
                           </AvatarFallback>
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                    <DropdownMenuContent align="end" className="w-56 glass-card animate-slide-up">
+                      <DropdownMenuItem onClick={() => navigate('/dashboard')} className="cursor-pointer">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         Dashboard
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
                         <User className="mr-2 h-4 w-4" />
                         My Profile
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt && !isIOS}>
+                      <DropdownMenuItem onClick={handleInstallClick} disabled={!deferredPrompt && !isIOS} className="cursor-pointer">
                         <Download className="mr-2 h-4 w-4" />
                         Install App
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                      <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
                         <LogOut className="mr-2 h-4 w-4" />
                         Sign Out
                       </DropdownMenuItem>
@@ -98,17 +98,17 @@ export function Navbar() {
               ) : (
                 <>
                   <Link to="/auth">
-                    <Button variant="ghost">Sign In</Button>
+                    <Button variant="ghost" className="btn-press">Sign In</Button>
                   </Link>
                   <Link to="/auth?mode=signup">
-                    <Button variant="gradient">Create Free Invite</Button>
+                    <Button variant="gradient" className="btn-press shadow-lg">Create Free Invite</Button>
                   </Link>
                 </>
               )}
             </div>
 
             <button
-              className="md:hidden p-2"
+              className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors btn-press"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -117,10 +117,10 @@ export function Navbar() {
 
           {/* Mobile Menu Overlay */}
           {mobileMenuOpen && (
-            <div className="md:hidden absolute top-16 left-0 right-0 bg-background/95 backdrop-blur-xl border-b border-border/50 animate-in slide-in-from-top-2 p-4 shadow-lg">
+            <div className="md:hidden absolute top-16 left-0 right-0 glass-card border-t border-border/50 animate-slide-up p-4 shadow-modern">
               {(deferredPrompt || isIOS) && (
                 <div className="mb-4">
-                  <Button variant="outline" className="w-full gap-2" onClick={handleInstallClick}>
+                  <Button variant="outline" className="w-full gap-2 btn-press" onClick={handleInstallClick}>
                     <Download className="h-4 w-4" />
                     Install App
                   </Button>
@@ -129,13 +129,13 @@ export function Navbar() {
               {user ? (
                 <div className="space-y-3">
                   <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
+                    <Button variant="ghost" className="w-full justify-start gap-2 btn-press">
                       <LayoutDashboard className="h-4 w-4" />
                       Dashboard
                     </Button>
                   </Link>
                   <Link to="/profile" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
+                    <Button variant="ghost" className="w-full justify-start gap-2 btn-press">
                       <User className="h-4 w-4" />
                       My Profile
                     </Button>
@@ -143,7 +143,7 @@ export function Navbar() {
                   <div className="h-px bg-border/50 my-2" />
                   <Button
                     variant="ghost"
-                    className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 btn-press"
                     onClick={() => {
                       handleSignOut();
                       setMobileMenuOpen(false);
@@ -156,10 +156,10 @@ export function Navbar() {
               ) : (
                 <div className="space-y-3">
                   <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">Sign In</Button>
+                    <Button variant="ghost" className="w-full justify-start btn-press">Sign In</Button>
                   </Link>
                   <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="gradient" className="w-full">Create Free Invite</Button>
+                    <Button variant="gradient" className="w-full btn-press">Create Free Invite</Button>
                   </Link>
                 </div>
               )}

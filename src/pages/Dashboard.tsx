@@ -328,10 +328,10 @@ export default function Dashboard() {
           {loadingEvents ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="invitation-card p-6 animate-pulse">
-                  <div className="h-40 bg-muted rounded-lg mb-4" />
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
+                <div key={i} className="invitation-card p-6">
+                  <div className="h-40 skeleton rounded-lg mb-4" />
+                  <div className="h-4 skeleton rounded w-3/4 mb-2" />
+                  <div className="h-3 skeleton rounded w-1/2" />
                 </div>
               ))}
             </div>
@@ -355,25 +355,32 @@ export default function Dashboard() {
           ) : (
             <>
               {/* Dashboard Tabs */}
-              <div className="flex items-center gap-4 mb-6 border-b">
+              <div className="flex items-center gap-6 mb-6 border-b relative">
                 <button
                   onClick={() => setActiveTab("hosting")}
-                  className={`pb-2 px-1 text-sm font-medium transition-colors border-b-2 ${activeTab === "hosting"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                  className={`pb-3 px-1 text-sm font-medium transition-all duration-300 btn-press ${activeTab === "hosting"
+                    ? "text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
                   Hosting ({events.length})
                 </button>
                 <button
                   onClick={() => setActiveTab("attending")}
-                  className={`pb-2 px-1 text-sm font-medium transition-colors border-b-2 ${activeTab === "attending"
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                  className={`pb-3 px-1 text-sm font-medium transition-all duration-300 btn-press ${activeTab === "attending"
+                    ? "text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                 >
                   Attending ({attendingEvents.length})
                 </button>
+                <div
+                  className="absolute bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-300 ease-out"
+                  style={{
+                    width: activeTab === "hosting" ? `${80}px` : `${90}px`,
+                    left: activeTab === "hosting" ? '4px' : `${110}px`
+                  }}
+                />
               </div>
 
 
@@ -389,23 +396,26 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {events.map((event) => (
-                      <div key={event.id} className="invitation-card overflow-hidden card-hover group">
+                    {events.map((event, index) => (
+                      <div key={event.id} className="card-modern card-elevated stagger-item" style={{ animationDelay: `${index * 0.1}s` }}>
                         {/* Cover Image */}
-                        <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden">
+                        <div className="h-48 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
                           {event.cover_image_url ? (
-                            <img
-                              src={event.cover_image_url}
-                              alt={event.event_name}
-                              className="w-full h-full object-cover"
-                            />
+                            <>
+                              <img
+                                src={event.cover_image_url}
+                                alt={event.event_name}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                            </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <span className="text-5xl">{getEventTypeEmoji(event.event_type)}</span>
                             </div>
                           )}
                           <div className="absolute top-3 right-3">
-                            <Badge className={getStatusColor(event.status)}>
+                            <Badge className={`${getStatusColor(event.status)} badge-modern shadow-sm`}>
                               {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                             </Badge>
                           </div>
@@ -432,35 +442,35 @@ export default function Dashboard() {
                           {/* Actions */}
                           <div className="flex items-center gap-2">
                             <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-                              <Button variant="outline" size="sm" className="w-full">
+                              <Button variant="outline" size="sm" className="w-full btn-press hover:border-primary">
                                 <Eye className="h-4 w-4 mr-1" />
                                 View
                               </Button>
                             </a>
                             <Link to={`/edit-event/${event.id}`} state={{ event }}>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" className="btn-press hover:bg-primary/10 hover:text-primary">
                                 <Edit className="h-4 w-4" />
                               </Button>
                             </Link>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
+                                <Button variant="ghost" size="sm" className="btn-press">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleShare(event)}>
+                              <DropdownMenuContent align="end" className="glass-card animate-slide-up">
+                                <DropdownMenuItem onClick={() => handleShare(event)} className="cursor-pointer">
                                   <Share2 className="h-4 w-4 mr-2" />
                                   Share
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleViewRSVPs(event)}>
+                                <DropdownMenuItem onClick={() => handleViewRSVPs(event)} className="cursor-pointer">
                                   <Users className="h-4 w-4 mr-2" />
                                   RSVPs
                                 </DropdownMenuItem>
 
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteClick(event)}
-                                  className="text-destructive focus:text-destructive"
+                                  className="text-destructive focus:text-destructive cursor-pointer"
                                 >
                                   <Trash2 className="h-4 w-4 mr-2" />
                                   Delete Event
@@ -481,16 +491,19 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {attendingEvents.map((event) => (
-                      <div key={event.id} className="invitation-card overflow-hidden card-hover group">
+                    {attendingEvents.map((event, index) => (
+                      <div key={event.id} className="card-modern card-elevated stagger-item" style={{ animationDelay: `${index * 0.1}s` }}>
                         {/* Cover Image */}
-                        <div className="h-40 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden">
+                        <div className="h-48 bg-gradient-to-br from-primary/10 to-secondary/10 relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
                           {event.cover_image_url ? (
-                            <img
-                              src={event.cover_image_url}
-                              alt={event.event_name}
-                              className="w-full h-full object-cover"
-                            />
+                            <>
+                              <img
+                                src={event.cover_image_url}
+                                alt={event.event_name}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                            </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <span className="text-5xl">{getEventTypeEmoji(event.event_type)}</span>
@@ -510,7 +523,7 @@ export default function Dashboard() {
 
                           <div className="flex items-center gap-2">
                             <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="w-full">
-                              <Button variant="default" size="sm" className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90">
+                              <Button variant="gradient" size="sm" className="w-full btn-press shadow-lg hover:shadow-xl">
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Event
                               </Button>

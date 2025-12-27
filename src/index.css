@@ -48,13 +48,13 @@
     --dewana-rose: 350 80% 72%;
     --dewana-emerald: 158 64% 40%;
     --dewana-blue: 215 80% 50%;
-    
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(18 100% 60%), hsl(338 76% 49%));
     --gradient-gold: linear-gradient(135deg, hsl(36 90% 62%), hsl(28 85% 55%));
     --gradient-festive: linear-gradient(135deg, hsl(18 100% 60%), hsl(36 90% 62%), hsl(338 76% 49%));
     --gradient-cream: linear-gradient(180deg, hsl(30 40% 98%), hsl(30 30% 95%));
-    
+
     /* Shadows */
     --shadow-soft: 0 4px 20px -4px hsla(18, 100%, 60%, 0.15);
     --shadow-card: 0 8px 30px -8px hsla(0, 0%, 0%, 0.08);
@@ -120,7 +120,12 @@
     font-family: 'Inter', sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Playfair Display', serif;
     @apply font-semibold tracking-tight;
   }
@@ -196,23 +201,49 @@
 
   /* Animations */
   @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
   }
 
   @keyframes shimmer {
-    0% { background-position: -200% center; }
-    100% { background-position: 200% center; }
+    0% {
+      background-position: -200% center;
+    }
+
+    100% {
+      background-position: 200% center;
+    }
   }
 
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px hsla(18, 100%, 60%, 0.3); }
-    50% { box-shadow: 0 0 40px hsla(18, 100%, 60%, 0.5); }
+
+    0%,
+    100% {
+      box-shadow: 0 0 20px hsla(18, 100%, 60%, 0.3);
+    }
+
+    50% {
+      box-shadow: 0 0 40px hsla(18, 100%, 60%, 0.5);
+    }
   }
 
   @keyframes confetti {
-    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+    0% {
+      transform: translateY(0) rotate(0deg);
+      opacity: 1;
+    }
+
+    100% {
+      transform: translateY(-100vh) rotate(720deg);
+      opacity: 0;
+    }
   }
 
   .animate-float {
@@ -259,9 +290,116 @@
     border-image: var(--gradient-festive) 1;
   }
 
-  /* Glass effect */
+  /* Glass effect - Enhanced for modern apps */
   .glass {
     @apply bg-background/80 backdrop-blur-lg;
+  }
+
+  .glass-card {
+    @apply bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl border border-white/20 shadow-xl;
+  }
+
+  .glass-nav {
+    @apply bg-white/70 dark:bg-gray-900/70 backdrop-blur-2xl border-b border-white/10;
+  }
+
+  .card-elevated {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Modern Instagram/Zomato-inspired effects */
+  .card-modern {
+    @apply rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1;
+  }
+
+  .gradient-border {
+    position: relative;
+    background: linear-gradient(white, white) padding-box,
+      linear-gradient(135deg, hsl(18 100% 60%), hsl(338 76% 49%)) border-box;
+    border: 2px solid transparent;
+  }
+
+  .dark .gradient-border {
+    background: linear-gradient(hsl(0 0% 12%), hsl(0 0% 12%)) padding-box,
+      linear-gradient(135deg, hsl(18 100% 60%), hsl(338 76% 49%)) border-box;
+  }
+
+  /* Skeleton loading (Instagram-style) */
+  @keyframes skeleton-loading {
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:200%_100%];
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+  }
+
+  /* Stagger animation for lists */
+  @keyframes stagger-in {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-item {
+    animation: stagger-in 0.4s ease-out forwards;
+    opacity: 0;
+  }
+
+  .stagger-item:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+
+  .stagger-item:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+
+  .stagger-item:nth-child(3) {
+    animation-delay: 0.15s;
+  }
+
+  .stagger-item:nth-child(4) {
+    animation-delay: 0.2s;
+  }
+
+  .stagger-item:nth-child(5) {
+    animation-delay: 0.25s;
+  }
+
+  .stagger-item:nth-child(6) {
+    animation-delay: 0.3s;
+  }
+
+  /* Button press effect */
+  .btn-press {
+    @apply active:scale-95 transition-transform duration-100;
+  }
+
+  /* Smooth tab indicator */
+  .tab-indicator {
+    @apply absolute bottom-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-300 ease-out;
+  }
+
+  /* Modern badge */
+  .badge-modern {
+    @apply px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm;
   }
 
   /* Invitation card styles */
@@ -282,7 +420,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }

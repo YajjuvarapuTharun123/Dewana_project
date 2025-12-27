@@ -4,7 +4,7 @@ import { Heart } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="bg-card border-t border-border/50 py-12 pattern-mandala">
+    <footer className="glass-nav border-t border-border/50 py-12 pattern-mandala">
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex flex-col items-center md:items-start gap-4">
@@ -15,22 +15,22 @@ export function Footer() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground">
-            <Link to="/" className="hover:text-primary transition-colors">
+            <Link to="/" className="hover:text-primary transition-colors btn-press">
               Home
             </Link>
-            <Link to="/about" className="hover:text-primary transition-colors">
+            <Link to="/about" className="hover:text-primary transition-colors btn-press">
               About
             </Link>
-            <Link to="/faq" className="hover:text-primary transition-colors">
+            <Link to="/faq" className="hover:text-primary transition-colors btn-press">
               FAQ
             </Link>
-            <Link to="/contact" className="hover:text-primary transition-colors">
+            <Link to="/contact" className="hover:text-primary transition-colors btn-press">
               Contact Us
             </Link>
-            <Link to="/terms" className="hover:text-primary transition-colors">
+            <Link to="/terms" className="hover:text-primary transition-colors btn-press">
               Terms & Conditions
             </Link>
-            <Link to="/dashboard" className="hover:text-primary transition-colors">
+            <Link to="/dashboard" className="hover:text-primary transition-colors btn-press">
               Create Invite
             </Link>
           </div>

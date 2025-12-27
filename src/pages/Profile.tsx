@@ -227,12 +227,12 @@ export default function Profile() {
                     </div>
 
                     {/* Profile Card */}
-                    <div className="invitation-card p-6 md:p-8">
+                    <div className="glass-card invitation-card p-6 md:p-8">
                         {/* Avatar Section */}
                         <div className="flex flex-col items-center mb-8">
-                            <Avatar className="h-24 w-24 border-4 border-primary/20 mb-4">
+                            <Avatar className="h-24 w-24 gradient-border mb-4 shadow-lg">
                                 <AvatarImage src={user.user_metadata?.avatar_url} />
-                                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-heading">
+                                <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-primary text-2xl font-heading font-semibold">
                                     {getInitials(formData.firstName, formData.lastName)}
                                 </AvatarFallback>
                             </Avatar>
@@ -305,17 +305,49 @@ export default function Profile() {
                                     <Bell className="h-5 w-5" />
                                     Notification Settings
                                 </h3>
-                                <div className="flex items-center justify-between">
-                                    <div className="space-y-0.5">
-                                        <Label className="text-base">Push Notifications</Label>
-                                        <p className="text-sm text-muted-foreground">
-                                            Receive reminders for upcoming events
-                                        </p>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-base">Push Notifications</Label>
+                                            <p className="text-sm text-muted-foreground">
+                                                Receive reminders for upcoming events
+                                            </p>
+                                            {Notification.permission !== 'default' && (
+                                                <div className={`inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full text-xs ${Notification.permission === 'granted'
+                                                    ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400'
+                                                    : 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
+                                                    }`}>
+                                                    <span className="h-2 w-2 rounded-full bg-current animate-pulse" />
+                                                    {Notification.permission === 'granted' ? 'Permission Granted' : 'Permission Denied'}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <Switch
+                                            checked={notificationsEnabled}
+                                            onCheckedChange={handleNotificationToggle}
+                                        />
                                     </div>
-                                    <Switch
-                                        checked={notificationsEnabled}
-                                        onCheckedChange={handleNotificationToggle}
-                                    />
+                                    {notificationsEnabled && Notification.permission === 'granted' && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                // Send a test notification
+                                                const testNotif = new Notification('🎉 Test Notification', {
+                                                    body: 'Notifications are working correctly!',
+                                                    icon: '/logo.png',
+                                                });
+                                                setTimeout(() => testNotif.close(), 5000);
+                                                toast({
+                                                    title: "Test notification sent!",
+                                                    description: "Check your notifications",
+                                                });
+                                            }}
+                                            className="w-full btn-press"
+                                        >
+                                            Send Test Notification
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
 
