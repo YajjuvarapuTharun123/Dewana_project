@@ -21,7 +21,6 @@ import {
   Copy,
   Trash2,
   Users,
-  CheckCircle
 } from "lucide-react";
 import { formatDate, getEventTypeEmoji } from "@/lib/supabase-helpers";
 import {
@@ -458,10 +457,7 @@ export default function Dashboard() {
                                   <Users className="h-4 w-4 mr-2" />
                                   RSVPs
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => navigate(`/checkin/${event.id}`)}>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Check-in Guests
-                                </DropdownMenuItem>
+
                                 <DropdownMenuItem
                                   onClick={() => handleDeleteClick(event)}
                                   className="text-destructive focus:text-destructive"
