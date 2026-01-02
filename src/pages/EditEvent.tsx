@@ -245,10 +245,6 @@ export default function EditEvent() {
                             <p className="text-muted-foreground">Update your event details</p>
                         </div>
                     </div>
-                    <Button onClick={handleSubmit} disabled={isSubmitting} variant="gradient" className="shadow-lg shadow-primary/20">
-                        {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Changes
-                    </Button>
                 </motion.div>
 
                 <div className="space-y-6">
@@ -417,8 +413,25 @@ export default function EditEvent() {
                         </div>
                     </div>
                 </div>
+
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-12 flex justify-center"
+                >
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting}
+                        variant="gradient"
+                        size="lg"
+                        className="w-full md:w-auto px-12 py-6 text-lg shadow-xl shadow-primary/20 rounded-2xl"
+                    >
+                        {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-5 w-5" />}
+                        Save Changes
+                    </Button>
+                </motion.div>
             </main>
             <Footer />
-        </div>
+        </div >
     );
 }
