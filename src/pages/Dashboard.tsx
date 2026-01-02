@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useEventNotifications } from "@/hooks/useEventNotifications";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useEventStatus } from "@/hooks/useEventStatus";
 import {
   Plus,
   Calendar,
@@ -396,9 +397,9 @@ function EmptyState({ type }: { type: 'hosting' | 'attending' }) {
 }
 
 // Inside EventCard component
-import { useEventStatus } from "@/hooks/useEventStatus";
 
 function EventCard({ event, isHosting, onShare, onDelete, onRSVP, getStatusColor }: any) {
+  const navigate = useNavigate();
   const realTimeStatus = useEventStatus(event.start_date, event.end_date);
 
   const getDynamicStatusColor = (status: string) => {
@@ -464,11 +465,14 @@ function EventCard({ event, isHosting, onShare, onDelete, onRSVP, getStatusColor
         </div>
 
         <div className="mt-5 pt-4 border-t border-border/50 flex items-center gap-2">
-          <a href={`/event/${event.slug}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-            <Button variant="outline" size="sm" className="w-full hover:bg-primary/5 hover:text-primary hover:border-primary/20">
-              <Eye className="h-4 w-4 mr-2" /> View
-            </Button>
-          </a>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 hover:bg-primary/5 hover:text-primary hover:border-primary/20"
+            onClick={() => navigate(`/event/${event.slug}`)}
+          >
+            <Eye className="h-4 w-4 mr-2" /> View
+          </Button>
           {isHosting && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

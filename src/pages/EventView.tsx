@@ -22,6 +22,7 @@ import {
   Video,
   ExternalLink,
   ChevronDown,
+  ChevronLeft,
   Loader2,
   Check,
   Instagram,
@@ -211,6 +212,19 @@ export default function EventView() {
   return (
     <div className="min-h-screen bg-background flex flex-col overflow-x-hidden font-body">
       <Navbar />
+
+      {/* Floating Back Button */}
+      <div className="fixed top-24 left-6 z-50">
+        <Button
+          onClick={() => navigate('/dashboard')}
+          variant="secondary"
+          size="sm"
+          className="rounded-full bg-background/50 backdrop-blur-md border border-white/20 shadow-lg hover:bg-background/80 transition-all group flex items-center gap-2 px-4 h-10"
+        >
+          <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back to Dashboard</span>
+        </Button>
+      </div>
 
       {/* Hero Section */}
       <div className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
